@@ -1,0 +1,2394 @@
+{
+  "schema_version": 1,
+  "generated_from": [
+    "E:\\SQL\\tmp\\manual\\member_a.json",
+    "E:\\SQL\\tmp\\manual\\member_b.json",
+    "E:\\SQL\\tmp\\manual\\member_c.json",
+    "E:\\SQL\\tmp\\manual\\member_d.json"
+  ],
+  "environment": {
+    "python": "3.14.2",
+    "python_requires": ">=3.14,<3.15",
+    "pip": "25.3",
+    "pytest": "9.1.1",
+    "encoding": "UTF-8",
+    "page_size": 4096
+  },
+  "counts": {
+    "total": 68,
+    "base": 24,
+    "extension": 44,
+    "by_member": {
+      "A": 16,
+      "B": 17,
+      "C": 18,
+      "D": 17
+    }
+  },
+  "field_order": [
+    "课程依据",
+    "任务目标",
+    "前置任务",
+    "允许修改",
+    "禁止修改",
+    "输入输出",
+    "公共接口",
+    "实现步骤",
+    "预期代码结构解释",
+    "实现提示词",
+    "测试用例",
+    "详细验收标准",
+    "独立验收提示词",
+    "代码讲解提示词",
+    "理解考试与小修改",
+    "交付文件"
+  ],
+  "tasks": [
+    {
+      "id": "A-B01",
+      "member": "A",
+      "title": "Token、关键字、标识符与行列位置",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P5；C-S8、C-S9、C-S10、C-S12；D-S2、D-S17",
+      "depends": "仅依赖冻结 contracts/source.py、tokens.py、errors.py，无其他成员依赖。",
+      "authorized_paths": [
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_b01.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b01.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b01.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_b01.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B01.md"
+    },
+    {
+      "id": "A-B02",
+      "member": "A",
+      "title": "数字、字符串、转义、运算符和注释",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P5；C-S8、C-S9、C-S11、C-S12；D-S2、D-S17",
+      "depends": "本地依赖 A-B01 的游标和位置规则。",
+      "authorized_paths": [
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_b02.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b02.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b02.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_b02.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B02.md"
+    },
+    {
+      "id": "A-B03",
+      "member": "A",
+      "title": "CREATE TABLE 与 INSERT 的递归下降解析",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P5、G-P6；C-S6、C-S15、C-S19、C-S20；D-S17、D-S18",
+      "depends": "本地依赖 A-B01、A-B02；使用冻结 AST 和 Token。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b03.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b03.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b03.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b03.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B03.md"
+    },
+    {
+      "id": "A-B04",
+      "member": "A",
+      "title": "SELECT 与 DELETE 的语句结构",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P5、G-P6；C-S6、C-S15、C-S20；D-S17、D-S18、D-S19",
+      "depends": "本地依赖 A-B03 的 Parser 基础；无 WHERE 用例可先独立通过，有 WHERE 时依赖 A-B05。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b04.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b04.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b04.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b04.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B04.md"
+    },
+    {
+      "id": "A-B05",
+      "member": "A",
+      "title": "WHERE、括号和布尔表达式优先级",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P5；C-S6、C-S16、C-S17、C-S19、C-S21、C-S22；D-S17",
+      "depends": "本地依赖 A-B03 的 expect、字面量入口与 AST；由 A-B04 调用。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b05.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b05.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b05.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_b05.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B05.md"
+    },
+    {
+      "id": "A-B06",
+      "member": "A",
+      "title": "多语句、诊断、Token 与 AST 输出",
+      "kind": "base",
+      "module": "frontend",
+      "course_basis": "G-P3、G-P6、G-P7；C-S8、C-S20、C-S22、C-S37、C-S40、C-S42；D-S17、D-S18",
+      "depends": "本地依赖 A-B01 至 A-B05。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/formatter.py",
+        "tests/frontend/test_a_b06.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_b06.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_b06.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/formatter.py",
+        "tests/frontend/test_a_b06.py",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-B06.md"
+    },
+    {
+      "id": "A-E01",
+      "member": "A",
+      "title": "UPDATE 语法扩展",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "G-P4；C-S6、C-S35；D-S17",
+      "depends": "本地依赖 A-B01 至 A-B06；不等待其他成员。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e01.py",
+        "docs/extensions/frontend_update_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e01.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e01.py",
+      "function_group": "update",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e01.py",
+        "docs/extensions/frontend_update_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E01.md"
+    },
+    {
+      "id": "A-E02",
+      "member": "A",
+      "title": "ORDER BY 和 LIMIT 语法扩展",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "G-P4；C-S6、C-S35；D-S10、D-S17",
+      "depends": "本地依赖 A-B04 至 A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e02.py",
+        "docs/extensions/frontend_order_limit_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e02.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e02.py",
+      "function_group": "order_limit",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e02.py",
+        "docs/extensions/frontend_order_limit_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E02.md"
+    },
+    {
+      "id": "A-E03",
+      "member": "A",
+      "title": "DISTINCT 语法扩展",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S35、C-S40；D-S10、D-S17",
+      "depends": "本地依赖 A-B04、A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e03.py",
+        "docs/extensions/frontend_distinct_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e03.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e03.py",
+      "function_group": "distinct",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e03.py",
+        "docs/extensions/frontend_distinct_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E03.md"
+    },
+    {
+      "id": "A-E04",
+      "member": "A",
+      "title": "JOIN、别名和限定列名",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "G-P4；C-S6、C-S35；D-S9、D-S10、D-S17",
+      "depends": "本地依赖 A-B04 至 A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e04.py",
+        "docs/extensions/frontend_join_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e04.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e04.py",
+      "function_group": "join",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e04.py",
+        "docs/extensions/frontend_join_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E04.md"
+    },
+    {
+      "id": "A-E05",
+      "member": "A",
+      "title": "GROUP BY 与聚合语法",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "G-P4；C-S6、C-S35；D-S10、D-S17",
+      "depends": "本地依赖 A-B04 至 A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e05.py",
+        "docs/extensions/frontend_aggregate_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e05.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e05.py",
+      "function_group": "aggregate",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e05.py",
+        "docs/extensions/frontend_aggregate_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E05.md"
+    },
+    {
+      "id": "A-E06",
+      "member": "A",
+      "title": "FLOAT、NULL、BOOL 和更多字面量",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S6、C-S9、C-S27、C-S35；D-S5、D-S17",
+      "depends": "本地依赖 A-B02、A-B03、A-B05、A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e06.py",
+        "docs/extensions/frontend_types_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e06.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e06.py",
+      "function_group": "extended_types",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "minidb/frontend/lexer.py",
+        "tests/frontend/test_a_e06.py",
+        "docs/extensions/frontend_types_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E06.md"
+    },
+    {
+      "id": "A-E07",
+      "member": "A",
+      "title": "加减乘除表达式",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S6、C-S9、C-S16、C-S17、C-S27、C-S33、C-S34；D-S10",
+      "depends": "本地依赖 A-B02、A-B05、A-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_e07.py",
+        "docs/extensions/frontend_arithmetic_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e07.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e07.py",
+      "function_group": "arithmetic",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_e07.py",
+        "docs/extensions/frontend_arithmetic_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E07.md"
+    },
+    {
+      "id": "A-E08",
+      "member": "A",
+      "title": "Panic Mode 错误恢复",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S19、C-S22、C-S35、C-S38；G-P3；D-S18",
+      "depends": "本地依赖 A-B06 和各语句 Parser。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_e08.py",
+        "docs/extensions/frontend_recovery_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e08.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e08.py",
+      "function_group": "independent_a_e08",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/parser.py",
+        "tests/frontend/test_a_e08.py",
+        "docs/extensions/frontend_recovery_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E08.md"
+    },
+    {
+      "id": "A-E09",
+      "member": "A",
+      "title": "FIRST、FOLLOW 与 LL(1) 分析工具",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S14、C-S17、C-S18、C-S19；G-P3；D-S18",
+      "depends": "本地依赖 A-B06 的 grammar.md；算法本身可用小文法独立测试。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/frontend/grammar_analysis.py",
+        "tests/frontend/test_a_e09.py",
+        "docs/extensions/frontend_ll1_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e09.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e09.py",
+      "function_group": "independent_a_e09",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "minidb/frontend/grammar_analysis.py",
+        "tests/frontend/test_a_e09.py",
+        "docs/extensions/frontend_ll1_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E09.md"
+    },
+    {
+      "id": "A-E10",
+      "member": "A",
+      "title": "SQL Fuzz、变异与失败用例缩减",
+      "kind": "extension",
+      "module": "frontend",
+      "course_basis": "C-S4、C-S37、C-S38、C-S41；G-P6、G-P7；D-S18",
+      "depends": "本地依赖 A-B01 至 A-B06；只测试前端，不等待真实数据库。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "tests/frontend/fuzz_support.py",
+        "tests/frontend/test_a_e10.py",
+        "docs/extensions/frontend_fuzz_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/frontend/test_a_e10.py",
+      "test_command": "python -m pytest -q tests/frontend/test_a_e10.py",
+      "function_group": "independent_a_e10",
+      "integration_input": "_integration_input/member_a/",
+      "deliverables": [
+        "tests/frontend/fuzz_support.py",
+        "tests/frontend/test_a_e10.py",
+        "docs/extensions/frontend_fuzz_v1.json",
+        "docs/walkthrough/member_a.md",
+        "delivery/member_a.json"
+      ],
+      "card": "docs/tasks/A/A-E10.md"
+    },
+    {
+      "id": "B-B01",
+      "member": "B",
+      "title": "CatalogService、名称规范化和缓存",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P6、G-P8；C-S24、C-S25；D-S14、D-S17、D-S18",
+      "depends": "只依赖冻结 metadata.py、ports.py、errors.py；Repository 使用本模块测试 Fake，无须等待成员 C。",
+      "authorized_paths": [
+        "minidb/compiler/catalog_service.py",
+        "tests/compiler/test_b_b01.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b01.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b01.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/catalog_service.py",
+        "tests/compiler/test_b_b01.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B01.md"
+    },
+    {
+      "id": "B-B02",
+      "member": "B",
+      "title": "CREATE 与 INSERT 语义检查和列值重排",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P5、G-P6；C-S24、C-S25、C-S28；D-S10、D-S17",
+      "depends": "B-B01；使用手工 AST 和 FakeCatalog，不依赖 A 的 Parser 或 C 的存储。",
+      "authorized_paths": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b02.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b02.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b02.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b02.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B02.md"
+    },
+    {
+      "id": "B-B03",
+      "member": "B",
+      "title": "SELECT 与 DELETE 名称绑定",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P5、G-P8；C-S24、C-S25、C-S26；D-S10、D-S14、D-S17",
+      "depends": "B-B01；表达式绑定会由 B-B04 补全类型规则；测试仅手工 AST、TableMeta 与 FakeCatalog。",
+      "authorized_paths": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b03.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b03.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b03.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b03.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B03.md"
+    },
+    {
+      "id": "B-B04",
+      "member": "B",
+      "title": "类型推导与 Bound AST",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P5；C-S20、C-S24、C-S27、C-S28；D-S10、D-S17",
+      "depends": "B-B02、B-B03；使用冻结 Bound 节点和手工 AST，不依赖成员 D 的求值器。",
+      "authorized_paths": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b04.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b04.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b04.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b04.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B04.md"
+    },
+    {
+      "id": "B-B05",
+      "member": "B",
+      "title": "四类 SQL 的 Logical Plan 与只读编译管线",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P5、G-P7、G-P8；C-S3、C-S29、C-S30、C-S31、C-S32、C-S43；D-S10、D-S17",
+      "depends": "B-B02、B-B03、B-B04；不调用 A、C、D 实现，FakeCatalog 提供只读元数据。",
+      "authorized_paths": [
+        "minidb/compiler/planner.py",
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b05.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b05.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b05.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/planner.py",
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_b05.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B05.md"
+    },
+    {
+      "id": "B-B06",
+      "member": "B",
+      "title": "常量比较折叠、布尔化简与计划格式化",
+      "kind": "base",
+      "module": "compiler",
+      "course_basis": "G-P4、G-P7；C-S5、C-S33、C-S34、C-S41、C-S42；D-S10",
+      "depends": "B-B04、B-B05；只优化合法 Bound 表达式和不可变 Plan，不依赖 D 的执行器。",
+      "authorized_paths": [
+        "minidb/compiler/optimizer.py",
+        "minidb/compiler/plan_formatter.py",
+        "tests/compiler/test_b_b06.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_b06.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_b06.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/optimizer.py",
+        "minidb/compiler/plan_formatter.py",
+        "tests/compiler/test_b_b06.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-B06.md"
+    },
+    {
+      "id": "B-E01",
+      "member": "B",
+      "title": "可注册优化规则框架",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S33、C-S35、C-S41；D-S10",
+      "depends": "B-B06；局部任务，无其他成员依赖。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/optimizer.py",
+        "minidb/compiler/rules.py",
+        "tests/compiler/test_b_e01.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e01.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e01.py",
+      "function_group": "independent_b_e01",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/optimizer.py",
+        "minidb/compiler/rules.py",
+        "tests/compiler/test_b_e01.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E01.md"
+    },
+    {
+      "id": "B-E02",
+      "member": "B",
+      "title": "Projection Pruning 与冗余节点删除",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S33、C-S35；D-S10",
+      "depends": "B-B05、B-B06；独立使用测试参考解释器，不等待 D。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/projection_pruning.py",
+        "tests/compiler/test_b_e02.py",
+        "docs/extensions/b_projection_pruning_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e02.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e02.py",
+      "function_group": "independent_b_e02",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/projection_pruning.py",
+        "tests/compiler/test_b_e02.py",
+        "docs/extensions/b_projection_pruning_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E02.md"
+    },
+    {
+      "id": "B-E03",
+      "member": "B",
+      "title": "算术表达式类型检查与常量折叠",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S27、C-S33、C-S34、C-S35",
+      "depends": "B-B04、B-B06；手工构造扩展节点即可独立测试。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/arithmetic.py",
+        "tests/compiler/test_b_e03.py",
+        "docs/extensions/b_arithmetic_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e03.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e03.py",
+      "function_group": "arithmetic",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/arithmetic.py",
+        "tests/compiler/test_b_e03.py",
+        "docs/extensions/b_arithmetic_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E03.md"
+    },
+    {
+      "id": "B-E04",
+      "member": "B",
+      "title": "UPDATE 语义检查与更新计划",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S35；D-S17",
+      "depends": "B-B02、B-B04、B-B05；手工 UPDATE 扩展 AST 和 FakeCatalog。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/update_planner.py",
+        "tests/compiler/test_b_e04.py",
+        "docs/extensions/b_update_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e04.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e04.py",
+      "function_group": "update",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/update_planner.py",
+        "tests/compiler/test_b_e04.py",
+        "docs/extensions/b_update_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E04.md"
+    },
+    {
+      "id": "B-E05",
+      "member": "B",
+      "title": "ORDER BY 与 LIMIT 语义和计划",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S35；D-S10",
+      "depends": "B-B03、B-B05；以手工扩展 SELECT 和 FakeCatalog 独立测试。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/order_limit.py",
+        "tests/compiler/test_b_e05.py",
+        "docs/extensions/b_order_limit_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e05.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e05.py",
+      "function_group": "order_limit",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/order_limit.py",
+        "tests/compiler/test_b_e05.py",
+        "docs/extensions/b_order_limit_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E05.md"
+    },
+    {
+      "id": "B-E06",
+      "member": "B",
+      "title": "JOIN 名称绑定与列名歧义检查",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S26、C-S35；D-S9、D-S10",
+      "depends": "B-B03、B-B04、B-B05；两张 Fake 表和手工 JOIN AST。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/join_binding.py",
+        "tests/compiler/test_b_e06.py",
+        "docs/extensions/b_join_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e06.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e06.py",
+      "function_group": "join",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/join_binding.py",
+        "tests/compiler/test_b_e06.py",
+        "docs/extensions/b_join_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E06.md"
+    },
+    {
+      "id": "B-E07",
+      "member": "B",
+      "title": "GROUP BY 与聚合语义",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S35；D-S10",
+      "depends": "B-B03、B-B04、B-B05；手工聚合 AST，固定 Fake schema。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/aggregate_binding.py",
+        "tests/compiler/test_b_e07.py",
+        "docs/extensions/b_aggregate_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e07.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e07.py",
+      "function_group": "aggregate",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/aggregate_binding.py",
+        "tests/compiler/test_b_e07.py",
+        "docs/extensions/b_aggregate_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E07.md"
+    },
+    {
+      "id": "B-E08",
+      "member": "B",
+      "title": "FLOAT、NULL 与三值逻辑",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S6、C-S27、C-S35；D-S17",
+      "depends": "B-B04、B-B06；使用 types_v1 JSON 描述扩展类型。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/extended_types.py",
+        "tests/compiler/test_b_e08.py",
+        "docs/extensions/b_types_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e08.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e08.py",
+      "function_group": "extended_types",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/extended_types.py",
+        "tests/compiler/test_b_e08.py",
+        "docs/extensions/b_types_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E08.md"
+    },
+    {
+      "id": "B-E09",
+      "member": "B",
+      "title": "Plan JSON、S 表达式与 EXPLAIN 输出",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P3、G-P7；C-S30、C-S32、C-S35、C-S42；D-S10",
+      "depends": "B-B05、B-B06；只需要本模块计划对象。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/plan_formatter.py",
+        "minidb/compiler/plan_serialization.py",
+        "tests/compiler/test_b_e09.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e09.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e09.py",
+      "function_group": "explain",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/plan_formatter.py",
+        "minidb/compiler/plan_serialization.py",
+        "tests/compiler/test_b_e09.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E09.md"
+    },
+    {
+      "id": "B-E10",
+      "member": "B",
+      "title": "表统计与简单代价估算",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S35、C-S41；D-S9、D-S10",
+      "depends": "B-B05、B-E09；通过本模块 FakeStatisticsProvider 提供统计，不依赖真实存储统计。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/cost_model.py",
+        "tests/compiler/test_b_e10.py",
+        "docs/extensions/b_statistics_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e10.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e10.py",
+      "function_group": "independent_b_e10",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/cost_model.py",
+        "tests/compiler/test_b_e10.py",
+        "docs/extensions/b_statistics_v1.json",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E10.md"
+    },
+    {
+      "id": "B-E11",
+      "member": "B",
+      "title": "表列名称智能纠错建议",
+      "kind": "extension",
+      "module": "compiler",
+      "course_basis": "G-P4；C-S35、C-S37、C-S41；D-S14",
+      "depends": "B-B01、B-B03；只使用当前作用域内的合法名称。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/compiler/name_suggestions.py",
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_e11.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/compiler/test_b_e11.py",
+      "test_command": "python -m pytest -q tests/compiler/test_b_e11.py",
+      "function_group": "independent_b_e11",
+      "integration_input": "_integration_input/member_b/",
+      "deliverables": [
+        "minidb/compiler/name_suggestions.py",
+        "minidb/compiler/semantic.py",
+        "tests/compiler/test_b_e11.py",
+        "docs/walkthrough/member_b.md",
+        "delivery/member_b.json"
+      ],
+      "card": "docs/tasks/B/B-E11.md"
+    },
+    {
+      "id": "C-B01",
+      "member": "C",
+      "title": "Superblock 与数据库文件初始化",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P4、G-P6、G-P8；C-S2、C-S43；D-S7、D-S13、D-S15、D-S17",
+      "depends": "仅依赖冻结 contracts；本地首先完成 constants.py 与 superblock.py。",
+      "authorized_paths": [
+        "minidb/storage/constants.py",
+        "minidb/storage/superblock.py",
+        "tests/storage/test_c_b01.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b01.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b01.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/constants.py",
+        "minidb/storage/superblock.py",
+        "tests/storage/test_c_b01.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B01.md"
+    },
+    {
+      "id": "C-B02",
+      "member": "C",
+      "title": "页分配、释放、读写与空闲链表",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P4、G-P5、G-P7、G-P8；C-S2；D-S6、D-S7、D-S17",
+      "depends": "C-B01；先用无缓存的DiskManager独测，C-B05再接入释放协调器。",
+      "authorized_paths": [
+        "minidb/storage/disk_manager.py",
+        "minidb/storage/constants.py",
+        "tests/storage/test_c_b02.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b02.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b02.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/disk_manager.py",
+        "minidb/storage/constants.py",
+        "tests/storage/test_c_b02.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B02.md"
+    },
+    {
+      "id": "C-B03",
+      "member": "C",
+      "title": "4096 字节 Slotted Page、Slot 与 tombstone",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P4、G-P5、G-P8；C-S43；D-S6、D-S8、D-S15",
+      "depends": "C-B01常量；不依赖表堆或其他成员。",
+      "authorized_paths": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_b03.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b03.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b03.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_b03.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B03.md"
+    },
+    {
+      "id": "C-B04",
+      "member": "C",
+      "title": "INT 与 VARCHAR 的行序列化",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P5、G-P8；C-S27、C-S28；D-S6、D-S15、D-S20",
+      "depends": "冻结ColumnMeta、DataType；可与C-B02、C-B03分别独测。",
+      "authorized_paths": [
+        "minidb/storage/row_codec.py",
+        "tests/storage/test_c_b04.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b04.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b04.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/row_codec.py",
+        "tests/storage/test_c_b04.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B04.md"
+    },
+    {
+      "id": "C-B05",
+      "member": "C",
+      "title": "BufferPool、pin、dirty、LRU 与 FIFO",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P4、G-P5、G-P7；C-S2；D-S8、D-S15、D-S17",
+      "depends": "C-B02磁盘页I/O；本任务拥有replacer与buffer_pool，不导入其他成员实现。",
+      "authorized_paths": [
+        "minidb/storage/replacer.py",
+        "minidb/storage/buffer_pool.py",
+        "tests/storage/test_c_b05.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b05.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b05.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/replacer.py",
+        "minidb/storage/buffer_pool.py",
+        "tests/storage/test_c_b05.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B05.md"
+    },
+    {
+      "id": "C-B06",
+      "member": "C",
+      "title": "TableHeap 与页式 Catalog Repository",
+      "kind": "base",
+      "module": "storage",
+      "course_basis": "G-P4、G-P5、G-P6、G-P8；C-S25、C-S43；D-S14、D-S17、D-S20",
+      "depends": "C-B01至C-B05；仅接收冻结TableMeta、StoredRow、RID和StoragePort。",
+      "authorized_paths": [
+        "minidb/storage/table_heap.py",
+        "minidb/storage/catalog_repository.py",
+        "tests/storage/test_c_b06.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_b06.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_b06.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/table_heap.py",
+        "minidb/storage/catalog_repository.py",
+        "tests/storage/test_c_b06.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-B06.md"
+    },
+    {
+      "id": "C-E01",
+      "member": "C",
+      "title": "删除空间复用",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4、G-P8；C-S35；D-S6、D-S15",
+      "depends": "本地C-B03、C-B06；在独立扩展分支实现。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e01.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e01.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e01.py",
+      "function_group": "independent_c_e01",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e01.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E01.md"
+    },
+    {
+      "id": "C-E02",
+      "member": "C",
+      "title": "页面压缩与 RID 保持",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P8；C-S35；D-S6、D-S15",
+      "depends": "本地C-B03、C-B06；可不做C-E01。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e02.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e02.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e02.py",
+      "function_group": "experimental_c_e02",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e02.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E02.md"
+    },
+    {
+      "id": "C-E03",
+      "member": "C",
+      "title": "Free Space Map",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4、G-P8；C-S35；D-S6、D-S7、D-S15",
+      "depends": "本地C-B06；基础版先使用可重建的内存Map。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/free_space_map.py",
+        "minidb/storage/table_heap.py",
+        "tests/storage/test_c_e03.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e03.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e03.py",
+      "function_group": "experimental_c_e03",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/free_space_map.py",
+        "minidb/storage/table_heap.py",
+        "tests/storage/test_c_e03.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E03.md"
+    },
+    {
+      "id": "C-E04",
+      "member": "C",
+      "title": "页面校验和与损坏检测",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P6、G-P8；C-S37；D-S6、D-S13",
+      "depends": "C-B01、C-B02、C-B05；独立存储格式v2基线。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/checksum.py",
+        "minidb/storage/disk_manager.py",
+        "minidb/storage/superblock.py",
+        "tests/storage/test_c_e04.py",
+        "docs/extensions/page_checksum_v2.json",
+        "docs/walkthrough/member_c.md",
+        "minidb/storage/page.py",
+        "minidb/storage/constants.py",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e04.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e04.py",
+      "function_group": "experimental_c_e04",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/checksum.py",
+        "minidb/storage/disk_manager.py",
+        "minidb/storage/superblock.py",
+        "tests/storage/test_c_e04.py",
+        "docs/extensions/page_checksum_v2.json",
+        "docs/walkthrough/member_c.md",
+        "minidb/storage/page.py",
+        "minidb/storage/constants.py",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E04.md"
+    },
+    {
+      "id": "C-E05",
+      "member": "C",
+      "title": "Clock 替换策略",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4、G-P7；C-S35；D-S8、D-S15",
+      "depends": "C-B05；复用Frame和pin协议。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/replacer.py",
+        "tests/storage/test_c_e05.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e05.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e05.py",
+      "function_group": "independent_c_e05",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/replacer.py",
+        "tests/storage/test_c_e05.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E05.md"
+    },
+    {
+      "id": "C-E06",
+      "member": "C",
+      "title": "顺序扫描预取",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4、G-P8；C-S35；D-S8、D-S15",
+      "depends": "C-B05、C-B06；首先采用同步单页预取。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/buffer_pool.py",
+        "minidb/storage/table_heap.py",
+        "tests/storage/test_c_e06.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e06.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e06.py",
+      "function_group": "independent_c_e06",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/buffer_pool.py",
+        "minidb/storage/table_heap.py",
+        "tests/storage/test_c_e06.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E06.md"
+    },
+    {
+      "id": "C-E07",
+      "member": "C",
+      "title": "行更新与迁移",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4；C-S35；D-S6、D-S8、D-S17",
+      "depends": "C-B03、C-B04、C-B06；扩展接口快照storage_update_v1。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/table_heap.py",
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e07.py",
+        "docs/extensions/storage_update_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e07.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e07.py",
+      "function_group": "update",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/table_heap.py",
+        "minidb/storage/page.py",
+        "tests/storage/test_c_e07.py",
+        "docs/extensions/storage_update_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E07.md"
+    },
+    {
+      "id": "C-E08",
+      "member": "C",
+      "title": "Overflow Page 大记录",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P4、G-P8；C-S35；D-S6、D-S7、D-S15",
+      "depends": "C-B02至C-B06；独立v2大记录格式与测试codec。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/overflow.py",
+        "tests/storage/test_c_e08.py",
+        "docs/extensions/overflow_v2.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e08.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e08.py",
+      "function_group": "experimental_c_e08",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/overflow.py",
+        "tests/storage/test_c_e08.py",
+        "docs/extensions/overflow_v2.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E08.md"
+    },
+    {
+      "id": "C-E09",
+      "member": "C",
+      "title": "B+ 树与 Index Manager",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "C-S35；D-S9、D-S11、D-S12、D-S15、D-S17",
+      "depends": "C-B02、C-B05、C-B06；从单列INT非唯一索引开始。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/bplus_tree.py",
+        "minidb/storage/index_manager.py",
+        "tests/storage/test_c_e09.py",
+        "docs/extensions/int_index_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e09.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e09.py",
+      "function_group": "experimental_c_e09",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/bplus_tree.py",
+        "minidb/storage/index_manager.py",
+        "tests/storage/test_c_e09.py",
+        "docs/extensions/int_index_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E09.md"
+    },
+    {
+      "id": "C-E10",
+      "member": "C",
+      "title": "WAL 页面日志与恢复基础",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P6；C-S35；D-S8、D-S13、D-S17",
+      "depends": "C-B01、C-B02、C-B05；独立实验库，需新日志格式。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/wal.py",
+        "minidb/storage/recovery.py",
+        "tests/storage/test_c_e10.py",
+        "docs/extensions/page_redo_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e10.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e10.py",
+      "function_group": "experimental_c_e10",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/wal.py",
+        "minidb/storage/recovery.py",
+        "tests/storage/test_c_e10.py",
+        "docs/extensions/page_redo_v1.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E10.md"
+    },
+    {
+      "id": "C-E11",
+      "member": "C",
+      "title": "Page Dump 与文件结构检查工具",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "G-P7、G-P8；C-S37、C-S42；D-S6、D-S15、D-S20",
+      "depends": "C-B01至C-B06；完全只读工具。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/page_dump.py",
+        "tests/storage/test_c_e11.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e11.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e11.py",
+      "function_group": "independent_c_e11",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/page_dump.py",
+        "tests/storage/test_c_e11.py",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E11.md"
+    },
+    {
+      "id": "C-E12",
+      "member": "C",
+      "title": "Extent 与简化 Tablespace",
+      "kind": "extension",
+      "module": "storage",
+      "course_basis": "D-S7、D-S13、D-S15、D-S17；C-S35；G-P4",
+      "depends": "C-B01、C-B02、C-B05；新格式实验基线，不替换核心单mini.db边界。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/storage/extent_manager.py",
+        "minidb/storage/tablespace.py",
+        "tests/storage/test_c_e12.py",
+        "docs/extensions/tablespace_v2.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/storage/test_c_e12.py",
+      "test_command": "python -m pytest -q tests/storage/test_c_e12.py",
+      "function_group": "experimental_c_e12",
+      "integration_input": "_integration_input/member_c/",
+      "deliverables": [
+        "minidb/storage/extent_manager.py",
+        "minidb/storage/tablespace.py",
+        "tests/storage/test_c_e12.py",
+        "docs/extensions/tablespace_v2.json",
+        "docs/walkthrough/member_c.md",
+        "delivery/member_c.json"
+      ],
+      "card": "docs/tasks/C/C-E12.md"
+    },
+    {
+      "id": "D-B01",
+      "member": "D",
+      "title": "BoundExpression 求值器",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P4、G-P8；C-S27、C-S28；D-S10",
+      "depends": "冻结bound.py；使用手工Bound节点，无须等待B。",
+      "authorized_paths": [
+        "minidb/runtime/expression_evaluator.py",
+        "tests/runtime/test_d_b01.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b01.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b01.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/expression_evaluator.py",
+        "tests/runtime/test_d_b01.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B01.md"
+    },
+    {
+      "id": "D-B02",
+      "member": "D",
+      "title": "SeqScan Filter Project 算子",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P4、G-P8；C-S30至C-S32；D-S9、D-S10",
+      "depends": "D-B01；StoragePort Fake。",
+      "authorized_paths": [
+        "minidb/runtime/operators.py",
+        "tests/runtime/test_d_b02.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b02.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b02.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/operators.py",
+        "tests/runtime/test_d_b02.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B02.md"
+    },
+    {
+      "id": "D-B03",
+      "member": "D",
+      "title": "建表与插入执行器",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P4、G-P5、G-P8；C-S30；D-S8、D-S14",
+      "depends": "D-B01；CatalogPort和StoragePort Fake。",
+      "authorized_paths": [
+        "minidb/runtime/command_executors.py",
+        "tests/runtime/test_d_b03.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b03.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b03.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/command_executors.py",
+        "tests/runtime/test_d_b03.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B03.md"
+    },
+    {
+      "id": "D-B04",
+      "member": "D",
+      "title": "删除执行器与影响行数",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P5、G-P6、G-P8；C-S6、C-S43；D-S17",
+      "depends": "D-B02；Storage Fake支持mark_delete。",
+      "authorized_paths": [
+        "minidb/runtime/command_executors.py",
+        "tests/runtime/test_d_b04.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b04.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b04.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/command_executors.py",
+        "tests/runtime/test_d_b04.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B04.md"
+    },
+    {
+      "id": "D-B05",
+      "member": "D",
+      "title": "执行服务 Trace 与结果格式",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P6、G-P7；C-S42；D-S10、D-S19、D-S20",
+      "depends": "D-B01至D-B04。",
+      "authorized_paths": [
+        "minidb/runtime/execution_service.py",
+        "minidb/runtime/result_formatter.py",
+        "tests/runtime/test_d_b05.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b05.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b05.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/execution_service.py",
+        "minidb/runtime/result_formatter.py",
+        "tests/runtime/test_d_b05.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B05.md"
+    },
+    {
+      "id": "D-B06",
+      "member": "D",
+      "title": "通过 ApplicationPort 构建 CLI",
+      "kind": "base",
+      "module": "runtime",
+      "course_basis": "G-P3、G-P4、G-P6；C-S8、C-S42；D-S10、D-S17、D-S19",
+      "depends": "D-B05；ApplicationPort Fake。",
+      "authorized_paths": [
+        "minidb/runtime/cli_service.py",
+        "tests/runtime/test_d_b06.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_b06.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_b06.py",
+      "function_group": "core",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/cli_service.py",
+        "tests/runtime/test_d_b06.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-B06.md"
+    },
+    {
+      "id": "D-E01",
+      "member": "D",
+      "title": "EXPLAIN 只读计划展示",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "C-S35、C-S42；D-S10",
+      "depends": "D-B05；使用ExtensionPlan和Fake计划获取器。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/explain_service.py",
+        "tests/runtime/test_d_e01.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e01.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e01.py",
+      "function_group": "explain",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/explain_service.py",
+        "tests/runtime/test_d_e01.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E01.md"
+    },
+    {
+      "id": "D-E02",
+      "member": "D",
+      "title": "UPDATE 执行器",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4；C-S35；D-S17",
+      "depends": "D-B01、D-B02；假更新端口。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/update_executor.py",
+        "tests/runtime/test_d_e02.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e02.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e02.py",
+      "function_group": "update",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/update_executor.py",
+        "tests/runtime/test_d_e02.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E02.md"
+    },
+    {
+      "id": "D-E03",
+      "member": "D",
+      "title": "Sort 与 Limit 算子",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4；C-S35；D-S10",
+      "depends": "D-B02；扩展Sort/Limit payload。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/sort_limit.py",
+        "tests/runtime/test_d_e03.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e03.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e03.py",
+      "function_group": "order_limit",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/sort_limit.py",
+        "tests/runtime/test_d_e03.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E03.md"
+    },
+    {
+      "id": "D-E04",
+      "member": "D",
+      "title": "Aggregate 与 GroupBy 算子",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4；C-S35；D-S17",
+      "depends": "D-B02；手工绑定聚合计划。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/aggregate.py",
+        "tests/runtime/test_d_e04.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e04.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e04.py",
+      "function_group": "aggregate",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/aggregate.py",
+        "tests/runtime/test_d_e04.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E04.md"
+    },
+    {
+      "id": "D-E05",
+      "member": "D",
+      "title": "Nested Loop Join 算子",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4；C-S35；D-S10",
+      "depends": "D-B01、D-B02；两侧Fake扫描。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/join.py",
+        "tests/runtime/test_d_e05.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e05.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e05.py",
+      "function_group": "join",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/join.py",
+        "tests/runtime/test_d_e05.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E05.md"
+    },
+    {
+      "id": "D-E06",
+      "member": "D",
+      "title": "批量插入与 CSV 导入",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4、G-P6；D-S8",
+      "depends": "D-B03；注入单行编译/执行Callable。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/import_service.py",
+        "tests/runtime/test_d_e06.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e06.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e06.py",
+      "function_group": "independent_d_e06",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/import_service.py",
+        "tests/runtime/test_d_e06.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E06.md"
+    },
+    {
+      "id": "D-E07",
+      "member": "D",
+      "title": "事务命令外壳",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "D-S2、D-S13、D-S17",
+      "depends": "D-B05；Fake TransactionPort。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/transaction_shell.py",
+        "tests/runtime/test_d_e07.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e07.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e07.py",
+      "function_group": "experimental_d_e07",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/transaction_shell.py",
+        "tests/runtime/test_d_e07.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E07.md"
+    },
+    {
+      "id": "D-E08",
+      "member": "D",
+      "title": "本地 HTTP API",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "D-S2、D-S10",
+      "depends": "D-B05；ApplicationPort Fake。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/http_api.py",
+        "tests/runtime/test_d_e08.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e08.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e08.py",
+      "function_group": "independent_d_e08",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/http_api.py",
+        "tests/runtime/test_d_e08.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E08.md"
+    },
+    {
+      "id": "D-E09",
+      "member": "D",
+      "title": "算子统计与性能分析",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "C-S35、C-S41；D-S8、D-S10",
+      "depends": "D-B02、D-B05。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/profiling.py",
+        "tests/runtime/test_d_e09.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e09.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e09.py",
+      "function_group": "independent_d_e09",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/profiling.py",
+        "tests/runtime/test_d_e09.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E09.md"
+    },
+    {
+      "id": "D-E10",
+      "member": "D",
+      "title": "CLI 历史与元命令",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "G-P4；C-S35；D-S19",
+      "depends": "D-B06。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/repl.py",
+        "tests/runtime/test_d_e10.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e10.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e10.py",
+      "function_group": "independent_d_e10",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/repl.py",
+        "tests/runtime/test_d_e10.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E10.md"
+    },
+    {
+      "id": "D-E11",
+      "member": "D",
+      "title": "查询取消与输出限制",
+      "kind": "extension",
+      "module": "runtime",
+      "course_basis": "C-S37、C-S41；D-S17",
+      "depends": "D-B02、D-B05。 扩展输入以公共v1字段表为准，个人快照只验证同一格式。",
+      "authorized_paths": [
+        "minidb/runtime/query_control.py",
+        "tests/runtime/test_d_e11.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "forbidden_paths": [
+        "minidb/contracts/",
+        "contracts.sha256",
+        "其他成员目录",
+        "minidb/integration/",
+        "tests/integration/"
+      ],
+      "test_path": "tests/runtime/test_d_e11.py",
+      "test_command": "python -m pytest -q tests/runtime/test_d_e11.py",
+      "function_group": "independent_d_e11",
+      "integration_input": "_integration_input/member_d/",
+      "deliverables": [
+        "minidb/runtime/query_control.py",
+        "tests/runtime/test_d_e11.py",
+        "docs/walkthrough/member_d.md",
+        "delivery/member_d.json"
+      ],
+      "card": "docs/tasks/D/D-E11.md"
+    }
+  ]
+}

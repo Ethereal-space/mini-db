@@ -1,0 +1,518 @@
+{
+  "schema_version": 1,
+  "document": {
+    "title": "MiniDB软件设计实验四人VibeCoding开发实施手册",
+    "output_path": "E:/SQL/output/documents/MiniDB软件设计实验四人VibeCoding开发实施手册.docx",
+    "repository_path": "docs/manual/MiniDB软件设计实验四人VibeCoding开发实施手册.docx",
+    "sha256": "5c2dbc0915f99689b016ff6e84f84a0dc3424cc3d33d72676682de94c44b7c06",
+    "bytes": 242305,
+    "page_count": 120,
+    "required_page_range": {
+      "minimum": 90,
+      "maximum": 120
+    },
+    "page_range_pass": true,
+    "render_directory": "internal QA artifact (not committed)",
+    "rendered_pages": 120,
+    "repository_copy_present": true,
+    "repository_copy_sha256": "5c2dbc0915f99689b016ff6e84f84a0dc3424cc3d33d72676682de94c44b7c06"
+  },
+  "task_catalog": {
+    "path": "docs/tasks/catalog.json",
+    "sha256": "2a79d558ada259a443a4a5fe75037a77bb6adc42a10b896ebcfd23e10fd9a5fd",
+    "tasks": 68,
+    "base": 24,
+    "extension": 44,
+    "field_order": [
+      "课程依据",
+      "任务目标",
+      "前置任务",
+      "允许修改",
+      "禁止修改",
+      "输入输出",
+      "公共接口",
+      "实现步骤",
+      "预期代码结构解释",
+      "实现提示词",
+      "测试用例",
+      "详细验收标准",
+      "独立验收提示词",
+      "代码讲解提示词",
+      "理解考试与小修改",
+      "交付文件"
+    ]
+  },
+  "task_cards": {
+    "root": "docs/tasks",
+    "count": 68,
+    "hash_algorithm": "SHA-256 over each UTF-8 Markdown file's exact bytes",
+    "files": [
+      {
+        "id": "A-B01",
+        "path": "docs/tasks/A/A-B01.md",
+        "sha256": "a533747d2b13b43e709f84e3bfe8206b3de8e972156aaf632931115759819ec8",
+        "bytes": 9159
+      },
+      {
+        "id": "A-B02",
+        "path": "docs/tasks/A/A-B02.md",
+        "sha256": "4adf3171bbd906cd0e98704a19a27dee53237f2557b8184d8633bbe5ed61784d",
+        "bytes": 8940
+      },
+      {
+        "id": "A-B03",
+        "path": "docs/tasks/A/A-B03.md",
+        "sha256": "a471ea4b7ec2108cf8fa3aa1b8fb10ac812952c978c14813c5437c028f6c8d3d",
+        "bytes": 9102
+      },
+      {
+        "id": "A-B04",
+        "path": "docs/tasks/A/A-B04.md",
+        "sha256": "1c3ec0fdb8ad0c7cc25975723b8865ff9691f0b6c1860435b51a24e649c64e0a",
+        "bytes": 8844
+      },
+      {
+        "id": "A-B05",
+        "path": "docs/tasks/A/A-B05.md",
+        "sha256": "8d2fb146ddb0e32222737a37bbf8dd055e501a16af33671ea2ee17685905dde4",
+        "bytes": 9134
+      },
+      {
+        "id": "A-B06",
+        "path": "docs/tasks/A/A-B06.md",
+        "sha256": "20e9807808609258f3ff14632fdd59bf5efdc6d9de74375bc7550add7df9b0d5",
+        "bytes": 9185
+      },
+      {
+        "id": "A-E01",
+        "path": "docs/tasks/A/A-E01.md",
+        "sha256": "9a209c9cd4d04280ad074e790755add175cb094de01f157eb683d8925b43252d",
+        "bytes": 7809
+      },
+      {
+        "id": "A-E02",
+        "path": "docs/tasks/A/A-E02.md",
+        "sha256": "f388be42df767d5b5a5c32428b295588da80900ce4047910d2f54e8d21c9a5ea",
+        "bytes": 7811
+      },
+      {
+        "id": "A-E03",
+        "path": "docs/tasks/A/A-E03.md",
+        "sha256": "9bc59457e3d1710e40b08b4270ae0e275a7537287f3ecd737f5d6ef54ffeaa90",
+        "bytes": 7828
+      },
+      {
+        "id": "A-E04",
+        "path": "docs/tasks/A/A-E04.md",
+        "sha256": "62fe9b2213f63450587e1340adb221a47761ddbca813922ebd147c914c8df23c",
+        "bytes": 7919
+      },
+      {
+        "id": "A-E05",
+        "path": "docs/tasks/A/A-E05.md",
+        "sha256": "40314533ef6e8dff83003f04dd1d797f62b421280aab2dc5ef0623247b7a1fe9",
+        "bytes": 8172
+      },
+      {
+        "id": "A-E06",
+        "path": "docs/tasks/A/A-E06.md",
+        "sha256": "1aee43ff876ee9f10850dc8269cc16496ad0d77696abdd7d58c77a5d71bf50bc",
+        "bytes": 8034
+      },
+      {
+        "id": "A-E07",
+        "path": "docs/tasks/A/A-E07.md",
+        "sha256": "563566d300b6395d300f4a5071ab2bbe6e80399ffbbc88bc9cf4ae003b4a7381",
+        "bytes": 7826
+      },
+      {
+        "id": "A-E08",
+        "path": "docs/tasks/A/A-E08.md",
+        "sha256": "3a4a73efab3fc87bf31bd53d159ccd6ecb7603f5df765a8e414c0c19bf5606fd",
+        "bytes": 8001
+      },
+      {
+        "id": "A-E09",
+        "path": "docs/tasks/A/A-E09.md",
+        "sha256": "e61761978a368cf272ea6357aceaf692cddfdba417e1def3f8cb824151f445fc",
+        "bytes": 7870
+      },
+      {
+        "id": "A-E10",
+        "path": "docs/tasks/A/A-E10.md",
+        "sha256": "48c7d26f7f79e289884124e27ba58a918de94ecf93d0c7ff612be8660b8bd68d",
+        "bytes": 8345
+      },
+      {
+        "id": "B-B01",
+        "path": "docs/tasks/B/B-B01.md",
+        "sha256": "0763acc3d318f3ce5df3030093152667e191deff8b61c7854c6a9cb0417553ae",
+        "bytes": 10256
+      },
+      {
+        "id": "B-B02",
+        "path": "docs/tasks/B/B-B02.md",
+        "sha256": "d08bc56d5ea4821f57d46e9cec00fefec79284c0b8a6964304bb51486a91be85",
+        "bytes": 9484
+      },
+      {
+        "id": "B-B03",
+        "path": "docs/tasks/B/B-B03.md",
+        "sha256": "ce327bda59037b3992751dca76521702e963ddcc05d2a98aba3670cf7d2fcf2f",
+        "bytes": 9437
+      },
+      {
+        "id": "B-B04",
+        "path": "docs/tasks/B/B-B04.md",
+        "sha256": "01fdfb3caad26cebad7be746bbfc275c5f1174487db262cdc4af02f7f22e293f",
+        "bytes": 9207
+      },
+      {
+        "id": "B-B05",
+        "path": "docs/tasks/B/B-B05.md",
+        "sha256": "da6d22cac709b874cf73895086024d43504f8896466c6130bdea7e693f442265",
+        "bytes": 9695
+      },
+      {
+        "id": "B-B06",
+        "path": "docs/tasks/B/B-B06.md",
+        "sha256": "d6d3f9beef4dbcc96d727798f675c3aaaf1419d6663a34cdd2362d00ad0f41ce",
+        "bytes": 9520
+      },
+      {
+        "id": "B-E01",
+        "path": "docs/tasks/B/B-E01.md",
+        "sha256": "bfe9fb197765fbe53a553800ebdfe29c707b17834d5d5ab1573747ecc1863771",
+        "bytes": 8019
+      },
+      {
+        "id": "B-E02",
+        "path": "docs/tasks/B/B-E02.md",
+        "sha256": "933e994f24d9d0244b7aded557ac228e7145665c728febbf892ec13a9685cc39",
+        "bytes": 8105
+      },
+      {
+        "id": "B-E03",
+        "path": "docs/tasks/B/B-E03.md",
+        "sha256": "29c27d08a62c20c2fc58665ec222fa5c4f5db84a8b66b8dc3bf3101d6274beda",
+        "bytes": 7909
+      },
+      {
+        "id": "B-E04",
+        "path": "docs/tasks/B/B-E04.md",
+        "sha256": "643b05d047bce6df5b77a5064878c4c0a1cb6fb12485b566b4083c57cf3ea072",
+        "bytes": 8343
+      },
+      {
+        "id": "B-E05",
+        "path": "docs/tasks/B/B-E05.md",
+        "sha256": "c48f3f64127b6d571ebe385f4c4845ede8c8b287fa4cb86a04c0950a41c69e95",
+        "bytes": 7931
+      },
+      {
+        "id": "B-E06",
+        "path": "docs/tasks/B/B-E06.md",
+        "sha256": "9f39613ffe779713de4a152dd388a408e368a4738d171fd0164a45a6148c188b",
+        "bytes": 8042
+      },
+      {
+        "id": "B-E07",
+        "path": "docs/tasks/B/B-E07.md",
+        "sha256": "3e5dc30a9fda07d87f6d6b1224d9938a1f9f7b79e8efff2c394ceacc94f3714b",
+        "bytes": 8361
+      },
+      {
+        "id": "B-E08",
+        "path": "docs/tasks/B/B-E08.md",
+        "sha256": "51dc35b65e31f5b5eedb65eee964a80ff58dc385e19858d727bdcca4f65c7bde",
+        "bytes": 8135
+      },
+      {
+        "id": "B-E09",
+        "path": "docs/tasks/B/B-E09.md",
+        "sha256": "2c0ef18383940d1bbfd9f19f02de1dfb821b0aa6ae07bdd1d07950a167694945",
+        "bytes": 8139
+      },
+      {
+        "id": "B-E10",
+        "path": "docs/tasks/B/B-E10.md",
+        "sha256": "2abd02dbcf15788b08f599bd628d7c2c54d6508adc28228101664361598fd22b",
+        "bytes": 8089
+      },
+      {
+        "id": "B-E11",
+        "path": "docs/tasks/B/B-E11.md",
+        "sha256": "6a74a3e50753d66df3a15e6a49b6334a655805e7e9193d362f66617566b90e60",
+        "bytes": 8049
+      },
+      {
+        "id": "C-B01",
+        "path": "docs/tasks/C/C-B01.md",
+        "sha256": "4877800d707aeba2921f02efbe4ed634d20603f20e538b80eccac89916a3f25a",
+        "bytes": 9063
+      },
+      {
+        "id": "C-B02",
+        "path": "docs/tasks/C/C-B02.md",
+        "sha256": "351dc69a88ba36fe9eab82e023e62712c780ed393b5c149efb8d3458ef38ed9a",
+        "bytes": 9489
+      },
+      {
+        "id": "C-B03",
+        "path": "docs/tasks/C/C-B03.md",
+        "sha256": "1b1ec181fbc9b376d61f4b67ec2f19a2f81c0dae6e581e1b410e6746b7d586a6",
+        "bytes": 8749
+      },
+      {
+        "id": "C-B04",
+        "path": "docs/tasks/C/C-B04.md",
+        "sha256": "74a866022ca59f275ca9af1817c149c3902e6cccd5cff137da0c094c32ee416f",
+        "bytes": 8795
+      },
+      {
+        "id": "C-B05",
+        "path": "docs/tasks/C/C-B05.md",
+        "sha256": "7b7a259cae25ba433b6571968c629921afda0c4fa2acd63a701d4a63ca985109",
+        "bytes": 9213
+      },
+      {
+        "id": "C-B06",
+        "path": "docs/tasks/C/C-B06.md",
+        "sha256": "f3716c369e0840af083fb47fefae97dce90de807002bf1f1c8c2cba8fa35a24d",
+        "bytes": 9808
+      },
+      {
+        "id": "C-E01",
+        "path": "docs/tasks/C/C-E01.md",
+        "sha256": "14bbe014e20fbe3ee79d062c884395bfb473b4e3dd7ade0c96807df135772831",
+        "bytes": 7460
+      },
+      {
+        "id": "C-E02",
+        "path": "docs/tasks/C/C-E02.md",
+        "sha256": "51a4f3769388417fa874337a869a6a10cf349db14c9ba8f892bc9e385c8e9518",
+        "bytes": 7300
+      },
+      {
+        "id": "C-E03",
+        "path": "docs/tasks/C/C-E03.md",
+        "sha256": "fcc47580789964475276da494b35f35b0bc9219b1eed4ed2021ec3ef18606106",
+        "bytes": 7422
+      },
+      {
+        "id": "C-E04",
+        "path": "docs/tasks/C/C-E04.md",
+        "sha256": "0e41276e1cb5ebe1cea2c353bcbb2e3069dd1878691b10f77a53f3c60b51a327",
+        "bytes": 7855
+      },
+      {
+        "id": "C-E05",
+        "path": "docs/tasks/C/C-E05.md",
+        "sha256": "f87ddbaa9055945afcecc3b699d473f4f91ad83518ad0a1fa143eaeec1999cee",
+        "bytes": 7263
+      },
+      {
+        "id": "C-E06",
+        "path": "docs/tasks/C/C-E06.md",
+        "sha256": "85884d31c83cf4fc2f6f249110515690a59a105c77e0700a252c749ba14d30d8",
+        "bytes": 7452
+      },
+      {
+        "id": "C-E07",
+        "path": "docs/tasks/C/C-E07.md",
+        "sha256": "861f208792ff46615533f8a33901631d21cd1cfc07757b00c8074543eb9061a1",
+        "bytes": 7601
+      },
+      {
+        "id": "C-E08",
+        "path": "docs/tasks/C/C-E08.md",
+        "sha256": "eb228f52c68f41596095f0e1ae2a68967519735dc231609f4d4865316b0d8c86",
+        "bytes": 7582
+      },
+      {
+        "id": "C-E09",
+        "path": "docs/tasks/C/C-E09.md",
+        "sha256": "b48ec9a9734fb640457db8e25c4e6c4f3d63e272e9161245e9248b56668bde1e",
+        "bytes": 7870
+      },
+      {
+        "id": "C-E10",
+        "path": "docs/tasks/C/C-E10.md",
+        "sha256": "6da3b6494907d5704dd5ab06b68a8e74b02d90da6187ae8a2bcac4eecec6d0ec",
+        "bytes": 8155
+      },
+      {
+        "id": "C-E11",
+        "path": "docs/tasks/C/C-E11.md",
+        "sha256": "4cc23b58a1f14bae4b086377e4797f7874cb591f40a48d9bee4c99457a9b6ad3",
+        "bytes": 7443
+      },
+      {
+        "id": "C-E12",
+        "path": "docs/tasks/C/C-E12.md",
+        "sha256": "19c06544f2997c57f30247df262c132bdaa8128c797abf567fbb8d7cb228a029",
+        "bytes": 7836
+      },
+      {
+        "id": "D-B01",
+        "path": "docs/tasks/D/D-B01.md",
+        "sha256": "a30e5aec5d3c94559595f5aa9a3af9cc124cf6ffc820134fa5514c240c055252",
+        "bytes": 8235
+      },
+      {
+        "id": "D-B02",
+        "path": "docs/tasks/D/D-B02.md",
+        "sha256": "05847df5e7d9caaeb1b0b537d840e9de7fbef699a863be716aac5cf8c5366ef1",
+        "bytes": 7762
+      },
+      {
+        "id": "D-B03",
+        "path": "docs/tasks/D/D-B03.md",
+        "sha256": "dfcd613e5e7de614f42e061a3af524352588da40e1ab7c443ebc9c7f135b6b1b",
+        "bytes": 8077
+      },
+      {
+        "id": "D-B04",
+        "path": "docs/tasks/D/D-B04.md",
+        "sha256": "457a5ef91c6e8b853cc9d9c12afebf5116b4e7bf035ca38a161be2d795cab5ad",
+        "bytes": 7743
+      },
+      {
+        "id": "D-B05",
+        "path": "docs/tasks/D/D-B05.md",
+        "sha256": "9ff89a0c291ad85d8b63b0f6c0c2ca0b1fa286ea1b2e607e626745628549f654",
+        "bytes": 8475
+      },
+      {
+        "id": "D-B06",
+        "path": "docs/tasks/D/D-B06.md",
+        "sha256": "4fc42f7c88a09bbaa37714c868a32be7ac4451497d6202fe473839cff2702ae8",
+        "bytes": 8122
+      },
+      {
+        "id": "D-E01",
+        "path": "docs/tasks/D/D-E01.md",
+        "sha256": "5e936b6c146d0c6f610cb0733d5e8320c01172e2e24d7730ee9dea6417f7e0ec",
+        "bytes": 7034
+      },
+      {
+        "id": "D-E02",
+        "path": "docs/tasks/D/D-E02.md",
+        "sha256": "428637dc697e1f5708c19a8223dcde137e376cf096b00fd52b7f858561d78247",
+        "bytes": 7475
+      },
+      {
+        "id": "D-E03",
+        "path": "docs/tasks/D/D-E03.md",
+        "sha256": "f1ac3e785adc0752201a22b53e980ff5ddb464fe9a429d0f447afd3ca9241ebd",
+        "bytes": 6848
+      },
+      {
+        "id": "D-E04",
+        "path": "docs/tasks/D/D-E04.md",
+        "sha256": "25423483534b72a476a284918adc2562fd0a3d5bedd9a31aaca94124723aa549",
+        "bytes": 7277
+      },
+      {
+        "id": "D-E05",
+        "path": "docs/tasks/D/D-E05.md",
+        "sha256": "978eb7c23d31237335b1260e23c11426b330a4c7d55c07c1f68daf7ddaa9263a",
+        "bytes": 6908
+      },
+      {
+        "id": "D-E06",
+        "path": "docs/tasks/D/D-E06.md",
+        "sha256": "084397211741d06098bf95c1b2aae057e7c19c54679e9b63bdced842acb54a24",
+        "bytes": 7143
+      },
+      {
+        "id": "D-E07",
+        "path": "docs/tasks/D/D-E07.md",
+        "sha256": "315c16d40c02c7cf705954f50edb22394ee787fc39437ce3b8400ae1ee8739fb",
+        "bytes": 7030
+      },
+      {
+        "id": "D-E08",
+        "path": "docs/tasks/D/D-E08.md",
+        "sha256": "4eb105f9779cddaf4610552a879bcd040a59ff0ca9f0d0defb150318b4686d65",
+        "bytes": 7001
+      },
+      {
+        "id": "D-E09",
+        "path": "docs/tasks/D/D-E09.md",
+        "sha256": "447cfedea766ced6ccbceee901d2c5c0a2b078a2355fdcc40278807ba9a146df",
+        "bytes": 6976
+      },
+      {
+        "id": "D-E10",
+        "path": "docs/tasks/D/D-E10.md",
+        "sha256": "b22b27bdeaaf01f744a3f6585e2eb2f1b9bdb346fec4224adbf1a43d854537b3",
+        "bytes": 7010
+      },
+      {
+        "id": "D-E11",
+        "path": "docs/tasks/D/D-E11.md",
+        "sha256": "2728e1130748098e817322534dbbb139b30ce38e0a5a432e6672ecc699c22e2c",
+        "bytes": 7214
+      }
+    ]
+  },
+  "feature_groups": {
+    "path": "docs/integration/feature-groups.json",
+    "sha256": "2c45e78a2af17da25adef7fcc70c386720727633bf5649cbb2fade373309c9a0"
+  },
+  "contract_hash": "e086cafec0a281ca94d3141731d4b227369879ad3345cbae2653cf76f8f1aa3b",
+  "source_task_data": [
+    {
+      "member": "A",
+      "path": "E:/SQL/tmp/manual/member_a.json",
+      "tasks": 16,
+      "sha256": "a384e7d9648ee08efd9dcca07781d54e83107402d54349f3949fcb396cd11dfc"
+    },
+    {
+      "member": "B",
+      "path": "E:/SQL/tmp/manual/member_b.json",
+      "tasks": 17,
+      "sha256": "cc687fbada26ddcc853aacafff035d6c2753cae83214f37f9afe28818eb265f9"
+    },
+    {
+      "member": "C",
+      "path": "E:/SQL/tmp/manual/member_c.json",
+      "tasks": 18,
+      "sha256": "5dcc83179d4bc3253aa91f0970d55349e7345130759bb70a7fd7f33fb2f49b23"
+    },
+    {
+      "member": "D",
+      "path": "E:/SQL/tmp/manual/member_d.json",
+      "tasks": 17,
+      "sha256": "181ac6745bdaba4abb6a1b1039db7de635c74c7fe43e1aaf3457c5a62b956524"
+    }
+  ],
+  "validation": {
+    "unique_task_ids": true,
+    "unique_begin_end_markers": true,
+    "fixed_field_order": true,
+    "source_content_preserved": true,
+    "utf8_scan": "PASS",
+    "json_parse": "PASS",
+    "visual_render_review": "PASS"
+  },
+  "document_structure": {
+    "task_begin_exact_count": 68,
+    "task_meta_exact_count": 68,
+    "task_end_exact_count": 68,
+    "fixed_fields_per_task": 16,
+    "fixed_field_order_pass": true,
+    "xml_replacement_character_count": 0
+  },
+  "visual_review": {
+    "status": "PASS",
+    "pages_checked": 120,
+    "ranges": [
+      "1-40",
+      "41-80",
+      "81-120"
+    ],
+    "known_orphan_heading_fixed": true
+  }
+}

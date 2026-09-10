@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minidb-course"
+version = "0.1.0"
+description = "大型平台软件设计实习的四人 MiniDB 基线"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+authors = [{ name = "MiniDB course team" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "python-docx==1.2.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["minidb*"]
