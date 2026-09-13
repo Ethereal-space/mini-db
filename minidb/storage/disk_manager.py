@@ -15,9 +15,12 @@ from minidb.contracts.errors import StorageError, StorageIOError
 
 from .constants import (
     CATALOG_PAGE_ID,
+    DATA_PAGE_HEADER_SIZE,
     DATA_PAGE_MAGIC,
     DATA_PAGE_STRUCT,
     DATA_PAGE_VERSION,
+    DATA_PAGE_VERSION_V2,
+    FORMAT_VERSION_V2,
     INVALID_PAGE_ID,
     MAX_I32,
     PAGE_SIZE,
@@ -47,12 +50,19 @@ class DiskManager:
         *,
         owns_database: bool | None = None,
         cache_coordinator: object | None = None,
+        format_version: int | None = None,
+        version: int | None = None,
     ) -> None:
+        if format_version is None:
+            format_version = version
         if isinstance(database, DatabaseFile):
             self._database = database
             self._owns_database = bool(owns_database) if owns_database is not None else False
         else:
-            self._database = DatabaseFile.open(database)
+            if format_version == FORMAT_VERSION_V2:
+                self._database = DatabaseFile.open_v2(database)
+            else:
+                self._database = DatabaseFile.open(database)
             self._owns_database = True if owns_database is None else bool(owns_database)
         self._cache_coordinator = cache_coordinator
         self._closed = False
@@ -70,6 +80,19 @@ class DiskManager:
     @classmethod
     def open(cls, path: str | Path, **kwargs: object) -> "DiskManager":
         return cls(path, **kwargs)
+
+    @classmethod
+    def open_v2(cls, path: str | Path, **kwargs: object) -> "DiskManager":
+        kwargs["format_version"] = FORMAT_VERSION_V2
+        return cls(path, **kwargs)
+
+    @classmethod
+    def initialize_v2(cls, path: str | Path, **kwargs: object) -> "DiskManager":
+        from .superblock import DatabaseFile
+
+        database = DatabaseFile.initialize_v2(path)
+        kwargs["owns_database"] = True
+        return cls(database, **kwargs)
 
     @property
     def database(self) -> DatabaseFile:
@@ -94,6 +117,14 @@ class DiskManager:
     @property
     def next_table_id(self) -> int:
         return self._database.next_table_id
+
+    @property
+    def page_version(self) -> int:
+        return self._database.page_version
+
+    @property
+    def format_version(self) -> int:
+        return self.page_version
 
     @property
     def free_pages(self) -> frozenset[int]:
@@ -152,7 +183,7 @@ class DiskManager:
             raw = self.read_page(head)
             next_free = self._decode_free_page(raw, expected_page_id=head)
             current = self._database.superblock
-            self._database.write_page(head, bytes(PAGE_SIZE))
+            self._database.write_page(head, self._blank_page(head))
             self._database.persist_superblock(current.__class__(
                 current.version,
                 current.page_size,
@@ -169,7 +200,7 @@ class DiskManager:
                 f"无法分配 page_id：page_count={self.page_count} 已达到有符号 32 位上限",
                 page_count=self.page_count,
             )
-        return self._database.append_page(bytes(PAGE_SIZE))
+        return self._database.append_page(self._blank_page(self.page_count))
 
     allocate = allocate_page
 
@@ -224,7 +255,7 @@ class DiskManager:
         if coordinator is not None:
             self._invalidate_coordinator(coordinator, page_id)
         next_free = self._database.superblock.free_head
-        free_page = self._encode_free_page(page_id, next_free)
+        free_page = self._encode_free_page(page_id, next_free, version=self.page_version)
         try:
             self._database.write_page(page_id, free_page)
             current = self._database.superblock
@@ -358,13 +389,14 @@ class DiskManager:
                 f"FREE next_page_id 越界：{next_page_id}",
                 {"page_id": expected_page_id, "field": "next_page_id", "offset": expected_page_id * PAGE_SIZE + 8},
             )
+        expected_version = DATA_PAGE_VERSION_V2 if self.page_version == FORMAT_VERSION_V2 else 0
         if (slot_count, free_start, free_end, flags, table_id, version, reserved) != (
             0,
             0,
             0,
             0,
             0,
-            0,
+            expected_version,
             0,
         ):
             raise StorageFormatError(
@@ -372,7 +404,8 @@ class DiskManager:
                 "FREE 页除 page_id 和 next_page_id 外的字段必须为零",
                 {"page_id": expected_page_id, "offset": expected_page_id * PAGE_SIZE + 12},
             )
-        if any(raw[DATA_PAGE_STRUCT.size:]):
+        payload_end = PAGE_SIZE - 4 if self.page_version == FORMAT_VERSION_V2 else PAGE_SIZE
+        if any(raw[DATA_PAGE_STRUCT.size:payload_end]):
             raise StorageFormatError(
                 "NONZERO_FREE_PAYLOAD",
                 "FREE 页剩余区域必须为零",
@@ -381,11 +414,12 @@ class DiskManager:
         return next_page_id
 
     @staticmethod
-    def _encode_free_page(page_id: int, next_page_id: int) -> bytes:
+    def _encode_free_page(page_id: int, next_page_id: int, *, version: int = DATA_PAGE_VERSION) -> bytes:
         if page_id <= CATALOG_PAGE_ID or page_id > MAX_I32:
             raise ValueError("可释放 page_id 必须大于 1 且适合有符号 32 位字段")
         if next_page_id != INVALID_PAGE_ID and next_page_id <= CATALOG_PAGE_ID:
             raise ValueError("空闲链后继必须为 -1 或大于 1")
+        data_version = DATA_PAGE_VERSION_V2 if version == FORMAT_VERSION_V2 else 0
         header = FREE_PAGE_STRUCT.pack(
             FREE_PAGE_MAGIC,
             page_id,
@@ -395,10 +429,29 @@ class DiskManager:
             0,
             0,
             0,
-            0,
+            data_version,
             0,
         )
-        return header + bytes(PAGE_SIZE - FREE_PAGE_STRUCT.size)
+        raw = header + bytes(PAGE_SIZE - FREE_PAGE_STRUCT.size)
+        if version == FORMAT_VERSION_V2:
+            from .checksum import seal_page
+
+            return seal_page(raw)
+        return raw
+
+    def _blank_page(self, page_id: int) -> bytes:
+        """生成新分配页的可读空页；v2 页同时写入正确 CRC。"""
+
+        if self.page_version == FORMAT_VERSION_V2:
+            from .checksum import seal_page
+            from .superblock import encode_data_page_header
+
+            raw = encode_data_page_header(
+                page_id=page_id,
+                version=DATA_PAGE_VERSION_V2,
+            ) + bytes(PAGE_SIZE - DATA_PAGE_HEADER_SIZE)
+            return seal_page(raw)
+        return bytes(PAGE_SIZE)
 
     @staticmethod
     def _looks_like_live_data_page(raw: bytes, page_id: int) -> bool:

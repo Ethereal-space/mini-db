@@ -10,10 +10,13 @@ from minidb.contracts.errors import StorageError
 
 from .constants import (
     CATALOG_PAGE_ID,
+    CHECKSUM_OFFSET,
     DATA_PAGE_HEADER_SIZE,
     DATA_PAGE_MAGIC,
     DATA_PAGE_STRUCT,
     DATA_PAGE_VERSION,
+    DATA_PAGE_VERSION_V2,
+    SUPPORTED_DATA_PAGE_VERSIONS,
     INVALID_PAGE_ID,
     MAX_I32,
     PAGE_SIZE,
@@ -96,7 +99,7 @@ class Page:
         self._version = version
         self._slots: list[Slot] = []
         self._free_start = DATA_PAGE_HEADER_SIZE
-        self._free_end = PAGE_SIZE
+        self._free_end = CHECKSUM_OFFSET if version == DATA_PAGE_VERSION_V2 else PAGE_SIZE
         self._data = bytearray(PAGE_SIZE)
         self._sync_header()
 
@@ -108,8 +111,9 @@ class Page:
         next_page_id: int = INVALID_PAGE_ID,
         *,
         flags: int = 0,
+        version: int = DATA_PAGE_VERSION,
     ) -> "Page":
-        return cls(page_id, table_id, next_page_id, flags=flags)
+        return cls(page_id, table_id, next_page_id, flags=flags, version=version)
 
     @classmethod
     def from_bytes(
@@ -132,6 +136,13 @@ class Page:
                 expected_length=PAGE_SIZE,
                 actual_length=len(raw),
             )
+        # 版本字段位于固定页头内；v2 先验证整页 CRC，再解释 page_id、
+        # slot_count 等其余字段，避免损坏计数驱动越界读取。
+        raw_version = int.from_bytes(raw[24:28], "little")
+        if raw_version == DATA_PAGE_VERSION_V2:
+            from .checksum import verify_page
+
+            verify_page(raw, page_id=page_id_for_error)
         try:
             magic, page_id, next_page_id, slot_count, free_start, free_end, flags, table_id, version, reserved = (
                 DATA_PAGE_STRUCT.unpack_from(raw, 0)
@@ -159,7 +170,7 @@ class Page:
                 page_id,
                 offset=8,
             )
-        if version != DATA_PAGE_VERSION:
+        if version not in SUPPORTED_DATA_PAGE_VERSIONS:
             raise _error(
                 StorageFormatError,
                 "UNSUPPORTED_PAGE_VERSION",
@@ -169,7 +180,8 @@ class Page:
             )
         if reserved != 0:
             raise _error(StorageFormatError, "NONZERO_PAGE_RESERVED", "页头 reserved 必须为零", page_id, offset=28)
-        if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= PAGE_SIZE:
+        payload_limit = CHECKSUM_OFFSET if version == DATA_PAGE_VERSION_V2 else PAGE_SIZE
+        if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= payload_limit:
             raise _error(
                 StorageFormatError,
                 "BAD_FREE_RANGE",
@@ -228,7 +240,12 @@ class Page:
                     slot_id=slot_id,
                     offset=slot_offset + 6,
                 )
-            if offset < free_end or offset + length > PAGE_SIZE:
+            # 压缩后的空 tombstone 使用 offset=length=0；它不再拥有
+            # payload，但 RID 仍然由该目录项保留。其他槽必须落在记录区。
+            if length == 0 and (slot_flags & SLOT_DELETED) and offset == 0:
+                slots.append(Slot(offset, length, slot_flags, slot_reserved))
+                continue
+            if offset < free_end or offset + length > payload_limit:
                 raise _error(
                     StorageFormatError,
                     "SLOT_OUT_OF_BOUNDS",
@@ -238,7 +255,9 @@ class Page:
                     offset=slot_offset,
                 )
             slots.append(Slot(offset, length, slot_flags, slot_reserved))
-            if length:
+            # 被删除槽的旧 payload 可以作为 C-E01 的洞，与新存活槽
+            # 暂时重叠；只有存活记录之间的重叠才是格式错误。
+            if length and not (slot_flags & SLOT_DELETED):
                 records.append((offset, offset + length, slot_id))
         records.sort()
         for previous, current in zip(records, records[1:]):
@@ -278,8 +297,8 @@ class Page:
             raise ValueError("next_page_id 必须为 -1 或大于 1")
         if not 0 <= flags <= 0xFFFF:
             raise ValueError("flags 必须适合无符号 16 位字段")
-        if version != DATA_PAGE_VERSION:
-            raise ValueError(f"只支持数据页版本 {DATA_PAGE_VERSION}")
+        if version not in SUPPORTED_DATA_PAGE_VERSIONS:
+            raise ValueError(f"只支持数据页版本 {SUPPORTED_DATA_PAGE_VERSIONS}")
 
     @property
     def page_id(self) -> int:
@@ -300,6 +319,7 @@ class Page:
         ):
             raise ValueError("next_page_id 必须为 -1 或大于 1")
         self._next_page_id = value
+        self._mark_checksum_dirty()
         self._sync_header()
 
     @property
@@ -323,8 +343,33 @@ class Page:
         return self._free_end
 
     @property
+    def payload_limit(self) -> int:
+        """当前页可用于记录 payload 的上界。
+
+        v1 页没有校验和，记录区可以一直延伸到页尾。后续的 v2 页会把
+        最后四个字节保留给 CRC；把上界作为页属性可以让复用和压缩逻辑
+        使用同一个边界，而不会把格式版本散落在调用方。
+        """
+
+        return CHECKSUM_OFFSET if self._version == DATA_PAGE_VERSION_V2 else PAGE_SIZE
+
+    @property
+    def payload_end(self) -> int:
+        return self.payload_limit
+
+    @property
+    def checksum_offset(self) -> int | None:
+        return CHECKSUM_OFFSET if self._version == DATA_PAGE_VERSION_V2 else None
+
+    @property
+    def available(self) -> int:
+        """不考虑已删除记录洞时，能够容纳的新 Slot+payload 字节数。"""
+
+        return max(0, self._free_end - self._free_start)
+
+    @property
     def data(self) -> bytes:
-        return bytes(self._data)
+        return self.to_bytes()
 
     @property
     def slots(self) -> tuple[Slot, ...]:
@@ -342,9 +387,98 @@ class Page:
     get_slot = slot
 
     def insert(self, payload: bytes | bytearray | memoryview) -> int:
+        return self.insert_reusing_hole(payload)
+
+    def find_hole(self, size: int) -> int | None:
+        """按 first-fit 返回一个可容纳 ``size`` 字节的已删除 payload 洞。
+
+        删除槽本身仍然占用目录项，新的记录只能追加新的 Slot。候选洞先
+        从删除槽的 payload 区收集，再减去所有存活记录，因而连续插入不会
+        覆盖刚刚写入的存活记录。返回值是洞的起始偏移，找不到时为 None。
+        """
+
+        if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+            raise ValueError("洞大小必须是非负整数")
+        if size == 0:
+            return self._free_end
+        self.validate()
+        deleted_ranges = [
+            (slot.offset, slot.offset + slot.length)
+            for slot in self._slots
+            if slot.is_deleted and slot.length > 0
+        ]
+        if not deleted_ranges:
+            return None
+        # 先合并删除槽的相邻区间，再从中扣除存活 payload。
+        merged: list[tuple[int, int]] = []
+        for start, end in sorted(deleted_ranges):
+            if merged and start <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        live_ranges = sorted(
+            (slot.offset, slot.offset + slot.length)
+            for slot in self._slots
+            if not slot.is_deleted and slot.length > 0
+        )
+        available_ranges = merged
+        for live_start, live_end in live_ranges:
+            next_ranges: list[tuple[int, int]] = []
+            for start, end in available_ranges:
+                if live_end <= start or live_start >= end:
+                    next_ranges.append((start, end))
+                    continue
+                if start < live_start:
+                    next_ranges.append((start, live_start))
+                if live_end < end:
+                    next_ranges.append((live_end, end))
+            available_ranges = next_ranges
+        for start, end in sorted(available_ranges):
+            if end - start >= size:
+                return start
+        return None
+
+    def insert_reusing_hole(self, payload: bytes | bytearray | memoryview) -> int:
+        """插入记录，优先复用删除 payload 洞但始终追加新的 Slot。
+
+        该方法只在完成所有容量和页格式检查后才修改字节，因此失败路径
+        保证页内容与 Slot 目录保持不变。洞不足时回退到页尾的普通追加。
+        """
+
         raw_payload = bytes(payload)
         required = SLOT_SIZE + len(raw_payload)
+        # 新 Slot 的目录空间无论 payload 放在哪里都必须位于记录区之前。
+        directory_end = self._free_start + SLOT_SIZE
         available = self._free_end - self._free_start
+        if directory_end > self._free_end:
+            raise _error(
+                PageFullError,
+                "PAGE_FULL",
+                f"页没有新的 Slot 目录空间：需要 {SLOT_SIZE} 字节，剩余 {available} 字节",
+                self._page_id,
+                payload_length=len(raw_payload),
+                available=available,
+                directory_end=directory_end,
+            )
+        hole_offset = self.find_hole(len(raw_payload)) if raw_payload else None
+        if hole_offset is not None:
+            self._mark_checksum_dirty()
+            slot_id = len(self._slots)
+            slot = Slot(hole_offset, len(raw_payload), 0, 0)
+            # find_hole 已经完成验证；单次写入不可能覆盖存活记录。
+            self._data[hole_offset : hole_offset + len(raw_payload)] = raw_payload
+            SLOT_STRUCT.pack_into(
+                self._data,
+                self._free_start,
+                slot.offset,
+                slot.length,
+                slot.flags,
+                slot.reserved,
+            )
+            self._slots.append(slot)
+            self._free_start = directory_end
+            self._sync_header()
+            return slot_id
         if required > available:
             raise _error(
                 PageFullError,
@@ -355,6 +489,7 @@ class Page:
                 available=available,
             )
         slot_id = len(self._slots)
+        self._mark_checksum_dirty()
         old_free_end = self._free_end
         record_offset = old_free_end - len(raw_payload)
         slot = Slot(record_offset, len(raw_payload), 0, 0)
@@ -365,6 +500,77 @@ class Page:
         self._free_end = record_offset
         self._sync_header()
         return slot_id
+
+    def compact(self) -> None:
+        """压缩页内存活 payload，保持 slot_id/RID 稳定。
+
+        先从当前字节构造只读快照并完整校验，再在临时页缓冲中按 slot_id
+        复制存活记录。任何校验失败都在修改前抛出，因而原页字节保持不变。
+        """
+
+        raw_before = bytes(self._data)
+        if self._version == DATA_PAGE_VERSION_V2:
+            from .checksum import crc32
+
+            stored_crc = int.from_bytes(raw_before[CHECKSUM_OFFSET : CHECKSUM_OFFSET + 4], "little")
+            if stored_crc and stored_crc != crc32(raw_before):
+                # 已从磁盘加载的页若被直接篡改，不能通过重新 seal 掩盖损坏。
+                from .checksum import verify_page
+
+                verify_page(raw_before, page_id=self._page_id)
+            raw_before = self.to_bytes()
+        parsed = type(self).from_bytes(raw_before, expected_page_id=self._page_id)
+        live_payloads = {
+            slot_id: bytes(parsed._data[slot.offset : slot.offset + slot.length])
+            for slot_id, slot in enumerate(parsed._slots)
+            if not slot.is_deleted
+        }
+        new_data = bytearray(PAGE_SIZE)
+        cursor = parsed.payload_limit
+        new_slots: list[Slot] = []
+        for slot_id, slot in enumerate(parsed._slots):
+            if slot.is_deleted:
+                new_slots.append(Slot(0, 0, slot.flags | SLOT_DELETED, slot.reserved))
+                continue
+            payload = live_payloads[slot_id]
+            cursor -= len(payload)
+            new_data[cursor : cursor + len(payload)] = payload
+            new_slots.append(Slot(cursor, len(payload), slot.flags, slot.reserved))
+        free_start = DATA_PAGE_HEADER_SIZE + len(new_slots) * SLOT_SIZE
+        if free_start > cursor:
+            # 该情况理论上已被 from_bytes 的边界校验排除；保留明确错误
+            # 以防未来格式版本改变目录大小。
+            raise _error(
+                StorageFormatError,
+                "COMPACT_OVERLAP",
+                "压缩后的 Slot 目录与 payload 区重叠",
+                self._page_id,
+                free_start=free_start,
+                free_end=cursor,
+            )
+        for slot_id, slot in enumerate(new_slots):
+            SLOT_STRUCT.pack_into(
+                new_data,
+                DATA_PAGE_HEADER_SIZE + slot_id * SLOT_SIZE,
+                slot.offset,
+                slot.length,
+                slot.flags,
+                slot.reserved,
+            )
+        self._data = new_data
+        self._page_id = parsed._page_id
+        self._table_id = parsed._table_id
+        self._next_page_id = parsed._next_page_id
+        self._flags = parsed._flags
+        self._version = parsed._version
+        self._slots = new_slots
+        self._free_start = free_start
+        self._free_end = cursor
+        self._sync_header()
+
+    compact_page = compact
+    def compact_in_place(self) -> None:
+        self.compact()
 
     def read(self, slot_id: int) -> bytes:
         slot = self.slot(slot_id)
@@ -385,6 +591,7 @@ class Page:
         slot = self.slot(slot_id)
         if slot.is_deleted:
             return False
+        self._mark_checksum_dirty()
         updated = Slot(slot.offset, slot.length, slot.flags | SLOT_DELETED, slot.reserved)
         self._slots[slot_id] = updated
         SLOT_STRUCT.pack_into(self._data, DATA_PAGE_HEADER_SIZE + slot_id * SLOT_SIZE, updated.offset, updated.length, updated.flags, updated.reserved)
@@ -405,11 +612,17 @@ class Page:
 
     def to_bytes(self) -> bytes:
         self._sync_header()
-        return bytes(self._data)
+        raw = bytes(self._data)
+        if self._version == DATA_PAGE_VERSION_V2:
+            from .checksum import seal_page
+
+            return seal_page(raw)
+        return raw
 
     serialize = to_bytes
 
     def _sync_header(self) -> None:
+        self._mark_checksum_dirty()
         DATA_PAGE_STRUCT.pack_into(
             self._data,
             0,
@@ -424,6 +637,10 @@ class Page:
             self._version,
             0,
         )
+
+    def _mark_checksum_dirty(self) -> None:
+        if self._version == DATA_PAGE_VERSION_V2:
+            self._data[CHECKSUM_OFFSET : CHECKSUM_OFFSET + 4] = bytes(4)
 
 
 SlottedPage = Page

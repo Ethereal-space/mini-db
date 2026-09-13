@@ -13,7 +13,8 @@ from minidb.contracts.results import BufferStats, RID, StoredRow
 from .buffer_pool import BufferPool
 from .constants import CATALOG_PAGE_ID, INVALID_PAGE_ID
 from .disk_manager import DiskManager
-from .page import Page, PageFullError, SlotNotFoundError
+from .free_space_map import FreeSpaceMap
+from .page import Page, PageFullError, SLOT_SIZE, SlotNotFoundError
 from .row_codec import RowCodec, RowDecodeError
 from .superblock import DatabaseFile, StorageFormatError
 
@@ -40,6 +41,7 @@ class TableHeap:
         buffer_pool_size: int = 8,
         pool_size: int | None = None,
         policy: str = "LRU",
+        free_space_map: FreeSpaceMap | None = None,
     ) -> None:
         if pool_size is not None:
             buffer_pool_size = pool_size
@@ -66,6 +68,9 @@ class TableHeap:
             self._owns_pool = True
             self._owns_disk = True
         self._closed = False
+        # Map 是可选的内存优化；不写入旁路文件，首次遇到某张表时由页链
+        # 重新扫描建立。保留同一对象允许调用方观察命中/回退统计。
+        self._free_space_map = free_space_map if free_space_map is not None else FreeSpaceMap()
 
     @property
     def disk(self) -> DiskManager:
@@ -87,14 +92,23 @@ class TableHeap:
     def closed(self) -> bool:
         return self._closed
 
+    @property
+    def free_space_map(self) -> FreeSpaceMap:
+        return self._free_space_map
+
+    @property
+    def fsm(self) -> FreeSpaceMap:
+        return self._free_space_map
+
     def create_table(self, table_id: int, columns: tuple[ColumnMeta, ...]) -> int:
         self._check_open()
         self._validate_schema(table_id, columns)
         first_page_id = self._disk.allocate_page()
-        page = Page.new(first_page_id, table_id=table_id)
+        page = Page.new(first_page_id, table_id=table_id, version=self._page_version)
         with self._buffer.fetch_page(first_page_id) as frame:
             frame.data[:] = page.to_bytes()
             self._buffer.mark_dirty(frame)
+            self._free_space_map.refresh(page)
         self._disk.update_next_table_id(max(self._disk.next_table_id, table_id + 1))
         self._buffer.flush_all()
         return first_page_id
@@ -110,6 +124,20 @@ class TableHeap:
     def mark_delete(self, table: TableMeta, rid: RID) -> None:
         descriptor = self._descriptor(table)
         self._mark_delete_descriptor(descriptor, rid)
+
+    def rebuild_free_space_map(self, table: TableMeta) -> int:
+        """从真实页链重建一张表的内存容量提示。"""
+
+        descriptor = self._descriptor(table)
+        pages: list[Page] = []
+        for page_id in self._chain_pages(descriptor):
+            with self._buffer.fetch_page(page_id) as frame:
+                page = Page.from_bytes(frame.data, expected_page_id=page_id)
+                self._check_table_page(page, descriptor)
+                pages.append(page)
+        return self._free_space_map.rebuild(pages, table_id=descriptor.table_id)
+
+    rebuild_fsm = rebuild_free_space_map
 
     def flush_all(self) -> None:
         self._check_open()
@@ -162,12 +190,29 @@ class TableHeap:
     def _insert_descriptor(self, descriptor: _TableDescriptor, values: Sequence[object]) -> RID:
         self._check_open()
         payload = RowCodec.encode(descriptor.columns, values)
-        page_id = descriptor.first_page_id
-        seen: set[int] = set()
-        while True:
-            if page_id in seen:
-                raise StorageFormatError("TABLE_PAGE_CYCLE", f"表 {descriptor.table_id} 页链形成环", {"page_id": page_id})
-            seen.add(page_id)
+        required = SLOT_SIZE + len(payload)
+        # 先建立/刷新当前表的提示。Map 是优化索引，真实页链仍是正确性
+        # 来源；链页 ID 也用来过滤来自其他表的旧提示。
+        chain = tuple(self._chain_pages(descriptor))
+        # 已有提示可能是故意注入的过期估计；只在该表完全没有条目时做
+        # 首次重建，命中后再由真实插入结果逐页刷新。
+        if not self._free_space_map.snapshot(table_id=descriptor.table_id):
+            for candidate_page_id in chain:
+                with self._buffer.fetch_page(candidate_page_id) as frame:
+                    page = Page.from_bytes(frame.data, expected_page_id=candidate_page_id)
+                    self._check_table_page(page, descriptor)
+                    self._free_space_map.refresh(page)
+        candidates = list(
+            self._free_space_map.find(required, table_id=descriptor.table_id)
+        )
+        ordered_page_ids = [page_id for page_id in candidates if page_id in chain]
+        ordered_page_ids.extend(page_id for page_id in chain if page_id not in ordered_page_ids)
+        attempted: set[int] = set()
+        page_id: int
+        for page_id in ordered_page_ids:
+            if page_id in attempted:
+                continue
+            attempted.add(page_id)
             next_page_id: int
             with self._buffer.fetch_page(page_id) as frame:
                 page = Page.from_bytes(frame.data, expected_page_id=page_id)
@@ -175,34 +220,45 @@ class TableHeap:
                 try:
                     slot_id = page.insert(payload)
                 except PageFullError:
-                    next_page_id = page.next_page_id
+                    self._free_space_map.refresh(page)
+                    continue
                 else:
                     frame.data[:] = page.to_bytes()
                     self._buffer.mark_dirty(frame)
+                    self._free_space_map.refresh(page)
                     return RID(page_id, slot_id)
-            if next_page_id != INVALID_PAGE_ID:
-                page_id = next_page_id
-                continue
-            new_page_id = self._disk.allocate_page()
-            new_page = Page.new(new_page_id, table_id=descriptor.table_id)
-            slot_id = new_page.insert(payload)
-            with self._buffer.fetch_page(new_page_id) as new_frame:
-                new_frame.data[:] = new_page.to_bytes()
-                self._buffer.mark_dirty(new_frame)
-            with self._buffer.fetch_page(page_id) as old_frame:
-                old_page = Page.from_bytes(old_frame.data, expected_page_id=page_id)
-                self._check_table_page(old_page, descriptor)
-                if old_page.next_page_id != INVALID_PAGE_ID:
-                    raise StorageError(
-                        "PAGE_CHAIN_CHANGED",
-                        f"page {page_id} 在追加期间已经有后继页",
-                        span=None,
-                        context={"page_id": page_id},
-                    )
-                old_page.next_page_id = new_page_id
-                old_frame.data[:] = old_page.to_bytes()
-                self._buffer.mark_dirty(old_frame)
-            return RID(new_page_id, slot_id)
+
+        # 候选已失败或没有页可容纳时，按原有页链逻辑在尾部追加。上面
+        # 已按 chain 顺序核实过每个页，因而这里不会无限重复旧候选。
+        if not chain:
+            raise StorageFormatError(
+                "EMPTY_TABLE_CHAIN",
+                f"表 {descriptor.table_id} 没有可用数据页",
+                {"table_id": descriptor.table_id},
+            )
+        page_id = chain[-1]
+        new_page_id = self._disk.allocate_page()
+        new_page = Page.new(new_page_id, table_id=descriptor.table_id, version=self._page_version)
+        slot_id = new_page.insert(payload)
+        with self._buffer.fetch_page(new_page_id) as new_frame:
+            new_frame.data[:] = new_page.to_bytes()
+            self._buffer.mark_dirty(new_frame)
+            self._free_space_map.refresh(new_page)
+        with self._buffer.fetch_page(page_id) as old_frame:
+            old_page = Page.from_bytes(old_frame.data, expected_page_id=page_id)
+            self._check_table_page(old_page, descriptor)
+            if old_page.next_page_id != INVALID_PAGE_ID:
+                raise StorageError(
+                    "PAGE_CHAIN_CHANGED",
+                    f"page {page_id} 在追加期间已经有后继页",
+                    span=None,
+                    context={"page_id": page_id},
+                )
+            old_page.next_page_id = new_page_id
+            old_frame.data[:] = old_page.to_bytes()
+            self._buffer.mark_dirty(old_frame)
+            self._free_space_map.refresh(old_page)
+        return RID(new_page_id, slot_id)
 
     def _scan_descriptor(
         self,
@@ -262,6 +318,7 @@ class TableHeap:
                     if changed:
                         frame.data[:] = page.to_bytes()
                         self._buffer.mark_dirty(frame)
+                        self._free_space_map.refresh(page)
                     return
             page_id = next_page_id
         raise _storage_error(
@@ -327,6 +384,10 @@ class TableHeap:
     def _check_open(self) -> None:
         if self._closed:
             raise StorageError("CLOSED_STORAGE", "TableHeap 已关闭", span=None, context={})
+
+    @property
+    def _page_version(self) -> int:
+        return int(getattr(self._disk, "page_version", 1))
 
 
 __all__ = ["TableHeap"]

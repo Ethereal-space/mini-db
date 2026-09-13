@@ -17,11 +17,15 @@ from minidb.contracts.errors import StorageError, StorageIOError
 
 from .constants import (
     CATALOG_PAGE_ID,
+    CHECKSUM_OFFSET,
+    CHECKSUM_SIZE,
     DATA_PAGE_HEADER_SIZE,
     DATA_PAGE_MAGIC,
     DATA_PAGE_STRUCT,
     DATA_PAGE_VERSION,
+    DATA_PAGE_VERSION_V2,
     FORMAT_VERSION,
+    FORMAT_VERSION_V2,
     INITIAL_CATALOG_HEAD,
     INITIAL_FREE_HEAD,
     INITIAL_NEXT_TABLE_ID,
@@ -30,6 +34,7 @@ from .constants import (
     MAX_I32,
     MAX_U32,
     PAGE_SIZE,
+    SUPPORTED_FORMAT_VERSIONS,
     SUPERBLOCK_FORMAT,
     SUPERBLOCK_MAGIC,
     SUPERBLOCK_PAGE_ID,
@@ -92,10 +97,16 @@ class Superblock:
         _check_u32(self.next_table_id, "next_table_id")
 
     @classmethod
-    def initial(cls) -> Self:
-        """返回新库使用的固定初始元数据。"""
+    def initial(cls, version: int = FORMAT_VERSION) -> Self:
+        """返回新库使用的固定初始元数据；v2 必须显式选择。"""
 
-        return cls()
+        if version not in SUPPORTED_FORMAT_VERSIONS:
+            raise ValueError(f"不支持的数据库格式版本：{version}")
+        return cls(version=version)
+
+    @classmethod
+    def initial_v2(cls) -> Self:
+        return cls.initial(FORMAT_VERSION_V2)
 
     def encode(self) -> bytes:
         """编码为完整的 4096 字节 Superblock 页。"""
@@ -112,10 +123,22 @@ class Superblock:
             )
         except struct.error as error:
             raise ValueError(f"Superblock 字段无法编码：{error}") from error
-        return header + bytes(PAGE_SIZE - SUPERBLOCK_SIZE)
+        raw = bytearray(header + bytes(PAGE_SIZE - SUPERBLOCK_SIZE))
+        if self.version == FORMAT_VERSION_V2:
+            from .checksum import seal_page
+
+            return seal_page(raw)
+        return bytes(raw)
 
     @classmethod
-    def decode(cls, data: bytes | bytearray | memoryview) -> Self:
+    def decode(
+        cls,
+        data: bytes | bytearray | memoryview,
+        *,
+        allow_versions: tuple[int, ...] | None = None,
+        supported_versions: tuple[int, ...] | None = None,
+        verify_checksum: bool = True,
+    ) -> Self:
         """从页 0 字节解码并校验字段；此方法绝不写入输入或文件。"""
 
         raw = bytes(data)
@@ -125,12 +148,6 @@ class Superblock:
                 f"Superblock 至少需要 {SUPERBLOCK_SIZE} 字节，实际为 {len(raw)} 字节",
                 offset=0,
                 actual_length=len(raw),
-            )
-        if len(raw) >= PAGE_SIZE and any(raw[SUPERBLOCK_SIZE:PAGE_SIZE]):
-            raise _format_error(
-                "NONZERO_SUPERBLOCK_RESERVED",
-                "Superblock 保留区必须全部为零",
-                offset=SUPERBLOCK_SIZE,
             )
         try:
             magic, version, page_size, page_count, free_head, catalog_head, next_table_id = (
@@ -145,13 +162,39 @@ class Superblock:
                 field="magic",
                 offset=0,
             )
-        if version != FORMAT_VERSION:
+        if allow_versions is not None and supported_versions is not None:
+            raise ValueError("allow_versions 与 supported_versions 不能同时提供")
+        selected_versions = allow_versions if allow_versions is not None else supported_versions
+        supported = (FORMAT_VERSION,) if selected_versions is None else tuple(selected_versions)
+        if version not in supported:
             raise _format_error(
                 "UNSUPPORTED_VERSION",
-                f"不支持的 Superblock version：{version}，期望 {FORMAT_VERSION}",
+                f"不支持的 Superblock version：{version}，允许 {supported}",
                 field="version",
                 offset=8,
             )
+        if version == FORMAT_VERSION_V2 and verify_checksum:
+            from .checksum import ChecksumError, verify_page
+
+            try:
+                verify_page(raw, page_id=SUPERBLOCK_PAGE_ID)
+            except ValueError as error:
+                raise _format_error(
+                    "TRUNCATED_SUPERBLOCK",
+                    f"v2 Superblock 校验需要完整 {PAGE_SIZE} 字节：{error}",
+                    offset=0,
+                    actual_length=len(raw),
+                ) from error
+            except ChecksumError:
+                raise
+        if len(raw) >= PAGE_SIZE:
+            reserved_end = CHECKSUM_OFFSET if version == FORMAT_VERSION_V2 else PAGE_SIZE
+            if any(raw[SUPERBLOCK_SIZE:reserved_end]):
+                raise _format_error(
+                    "NONZERO_SUPERBLOCK_RESERVED",
+                    "Superblock 保留区必须全部为零",
+                    offset=SUPERBLOCK_SIZE,
+                )
         if page_size != PAGE_SIZE:
             raise _format_error(
                 "BAD_PAGE_SIZE",
@@ -231,7 +274,7 @@ def encode_data_page_header(
     next_page_id: int = INVALID_PAGE_ID,
     slot_count: int = 0,
     free_start: int = DATA_PAGE_HEADER_SIZE,
-    free_end: int = PAGE_SIZE,
+    free_end: int | None = None,
     flags: int = 0,
     table_id: int = 0,
     version: int = DATA_PAGE_VERSION,
@@ -245,7 +288,11 @@ def encode_data_page_header(
         raise ValueError("next_page_id 必须为 -1 或大于等于 2")
     if not 0 <= slot_count <= 0xFFFF:
         raise ValueError("slot_count 必须适合无符号 16 位字段")
-    if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= PAGE_SIZE:
+    if free_end is None:
+        free_end = CHECKSUM_OFFSET if version == FORMAT_VERSION_V2 else PAGE_SIZE
+    if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= (
+        CHECKSUM_OFFSET if version == FORMAT_VERSION_V2 else PAGE_SIZE
+    ):
         raise ValueError("数据页 free_start/free_end 不满足页边界")
     for value, field in ((page_id, "page_id"), (table_id, "table_id"), (version, "version"), (reserved, "reserved")):
         _check_u32(value, field)
@@ -267,7 +314,13 @@ def encode_data_page_header(
     )
 
 
-def _validate_catalog_page(page: bytes, *, expected_page_id: int, page_count: int | None = None) -> None:
+def _validate_catalog_page(
+    page: bytes,
+    *,
+    expected_page_id: int,
+    page_count: int | None = None,
+    allow_versions: tuple[int, ...] | None = None,
+) -> None:
     if len(page) < DATA_PAGE_HEADER_SIZE:
         raise _format_error(
             "TRUNCATED_CATALOG_PAGE",
@@ -313,21 +366,27 @@ def _validate_catalog_page(page: bytes, *, expected_page_id: int, page_count: in
             page_id=expected_page_id,
             offset=expected_page_id * PAGE_SIZE + 8,
         )
-    if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= PAGE_SIZE:
+    supported = (DATA_PAGE_VERSION,) if allow_versions is None else tuple(allow_versions)
+    if version not in supported:
+        raise _format_error(
+            "UNSUPPORTED_DATA_PAGE_VERSION",
+            f"不支持的 Catalog page version：{version}，允许 {supported}",
+            field="version",
+            page_id=expected_page_id,
+            offset=expected_page_id * PAGE_SIZE + 24,
+        )
+    if version == FORMAT_VERSION_V2:
+        from .checksum import verify_page
+
+        verify_page(page, page_id=expected_page_id)
+    payload_end = CHECKSUM_OFFSET if version == FORMAT_VERSION_V2 else PAGE_SIZE
+    if not DATA_PAGE_HEADER_SIZE <= free_start <= free_end <= payload_end:
         raise _format_error(
             "BAD_CATALOG_FREE_RANGE",
             f"Catalog 空闲区间非法：free_start={free_start}, free_end={free_end}",
             field="free_range",
             page_id=expected_page_id,
             offset=expected_page_id * PAGE_SIZE + 16,
-        )
-    if version != DATA_PAGE_VERSION:
-        raise _format_error(
-            "UNSUPPORTED_DATA_PAGE_VERSION",
-            f"不支持的 Catalog page version：{version}",
-            field="version",
-            page_id=expected_page_id,
-            offset=expected_page_id * PAGE_SIZE + 24,
         )
     # Catalog 的 table_id 固定为 0；slot_count/flags/reserved 可由后续任务更新。
     if table_id != 0:
@@ -359,8 +418,29 @@ class DatabaseFile:
         self._closed = False
 
     @classmethod
-    def open(cls, path: str | os.PathLike[str]) -> Self:
-        """打开或初始化一个数据库文件。"""
+    def open(
+        cls,
+        path: str | os.PathLike[str],
+        *,
+        format_version: int | None = None,
+        version: int | None = None,
+    ) -> Self:
+        """打开数据库；v2 必须显式传 ``format_version=2``。"""
+
+        requested = format_version if format_version is not None else version
+        if requested not in (None, FORMAT_VERSION, FORMAT_VERSION_V2):
+            raise ValueError(f"不支持的数据库格式版本：{requested}")
+        return cls._open(path, requested_version=FORMAT_VERSION_V2 if requested == FORMAT_VERSION_V2 else None)
+
+    @classmethod
+    def open_v2(cls, path: str | os.PathLike[str]) -> Self:
+        """显式打开或初始化带 CRC32 的 v2 数据库。"""
+
+        return cls._open(path, requested_version=FORMAT_VERSION_V2)
+
+    @classmethod
+    def _open(cls, path: str | os.PathLike[str], *, requested_version: int | None) -> Self:
+        """内部版本门控入口；不改变已有 v1 ``open`` 的严格行为。"""
 
         database_path = Path(path)
         try:
@@ -370,9 +450,14 @@ class DatabaseFile:
             if not exists or file_size == 0:
                 handle = database_path.open("w+b")
                 try:
-                    initial = Superblock.initial()
+                    initial = Superblock.initial(requested_version or FORMAT_VERSION)
                     page0 = initial.encode()
-                    page1 = encode_data_page_header() + bytes(PAGE_SIZE - DATA_PAGE_HEADER_SIZE)
+                    page1_header = encode_data_page_header(version=initial.version)
+                    page1 = page1_header + bytes(PAGE_SIZE - DATA_PAGE_HEADER_SIZE)
+                    if initial.version == FORMAT_VERSION_V2:
+                        from .checksum import seal_page
+
+                        page1 = seal_page(page1)
                     handle.write(page0)
                     handle.write(page1)
                     handle.flush()
@@ -391,7 +476,17 @@ class DatabaseFile:
             handle = database_path.open("r+b")
             try:
                 raw_superblock = _read_exact(handle, PAGE_SIZE, page_id=SUPERBLOCK_PAGE_ID)
-                loaded = Superblock.decode(raw_superblock)
+                loaded = Superblock.decode(
+                    raw_superblock,
+                    allow_versions=(FORMAT_VERSION,) if requested_version is None else SUPPORTED_FORMAT_VERSIONS,
+                )
+                if requested_version is not None and loaded.version != requested_version:
+                    raise _format_error(
+                        "VERSION_MODE_MISMATCH",
+                        f"请求打开 v{requested_version}，文件实际为 v{loaded.version}",
+                        field="version",
+                        offset=8,
+                    )
                 actual_size = os.fstat(handle.fileno()).st_size
                 loaded.validate_file_size(actual_size)
                 raw_catalog = _read_exact(handle, PAGE_SIZE, page_id=loaded.catalog_head)
@@ -399,6 +494,7 @@ class DatabaseFile:
                     raw_catalog,
                     expected_page_id=loaded.catalog_head,
                     page_count=loaded.page_count,
+                    allow_versions=(loaded.version,),
                 )
                 return cls(database_path, handle, loaded)
             except (OSError, ValueError, struct.error, StorageError) as error:
@@ -416,7 +512,13 @@ class DatabaseFile:
             raise _io_error("OPEN_FAILED", f"打开数据库文件失败：{error}", path=str(database_path)) from error
 
     @classmethod
-    def initialize(cls, path: str | os.PathLike[str]) -> Self:
+    def initialize(
+        cls,
+        path: str | os.PathLike[str],
+        *,
+        format_version: int | None = None,
+        version: int | None = None,
+    ) -> Self:
         """显式初始化入口；语义与 ``open`` 相同，只接受新/空文件。"""
 
         database_path = Path(path)
@@ -426,7 +528,20 @@ class DatabaseFile:
                 "不能覆盖非空数据库文件",
                 path=str(database_path),
             )
-        return cls.open(database_path)
+        return cls.open(database_path, format_version=format_version, version=version)
+
+    @classmethod
+    def initialize_v2(cls, path: str | os.PathLike[str]) -> Self:
+        """显式创建/打开 v2 数据库；非空 v1 文件不会被升级。"""
+
+        database_path = Path(path)
+        if database_path.exists() and database_path.stat().st_size != 0:
+            raise _format_error(
+                "ALREADY_INITIALIZED",
+                "不能覆盖非空数据库文件",
+                path=str(database_path),
+            )
+        return cls.open_v2(database_path)
 
     @property
     def path(self) -> Path:
@@ -450,6 +565,16 @@ class DatabaseFile:
 
         return self._superblock.page_count
 
+    @property
+    def page_version(self) -> int:
+        """文件页格式版本；v2 的最后四字节由 CRC32 占用。"""
+
+        return self._superblock.version
+
+    @property
+    def format_version(self) -> int:
+        return self.page_version
+
     def describe_header(self) -> dict[str, dict[str, int | bytes]]:
         """返回页 0 字段说明；调用不会移动文件游标或写入文件。"""
 
@@ -467,7 +592,12 @@ class DatabaseFile:
         self._check_page_id(page_id)
         try:
             self._handle.seek(page_id * PAGE_SIZE)  # type: ignore[union-attr]
-            return _read_exact(self._handle, PAGE_SIZE, page_id=page_id)
+            raw = _read_exact(self._handle, PAGE_SIZE, page_id=page_id)
+            if self.page_version == FORMAT_VERSION_V2:
+                from .checksum import verify_page
+
+                verify_page(raw, page_id=page_id)
+            return raw
         except OSError as error:
             raise _io_error(
                 "READ_PAGE_FAILED",
@@ -488,6 +618,10 @@ class DatabaseFile:
         raw = bytes(data)
         if len(raw) != PAGE_SIZE:
             raise ValueError(f"页数据必须恰好为 {PAGE_SIZE} 字节，实际为 {len(raw)}")
+        if self.page_version == FORMAT_VERSION_V2:
+            from .checksum import seal_page
+
+            raw = seal_page(self._normalize_v2_page(raw, page_id=page_id))
         try:
             self._handle.seek(page_id * PAGE_SIZE)  # type: ignore[union-attr]
             written = self._handle.write(raw)  # type: ignore[union-attr]
@@ -512,6 +646,10 @@ class DatabaseFile:
             raise ValueError(f"页数据必须恰好为 {PAGE_SIZE} 字节，实际为 {len(raw)}")
         old_count = self._superblock.page_count
         old_size = old_count * PAGE_SIZE
+        if self.page_version == FORMAT_VERSION_V2:
+            from .checksum import seal_page
+
+            raw = seal_page(self._normalize_v2_page(raw, page_id=old_count))
         try:
             actual_size = os.fstat(self._handle.fileno()).st_size  # type: ignore[union-attr]
         except OSError as error:
@@ -569,9 +707,19 @@ class DatabaseFile:
         except OSError as error:
             raise _io_error("STAT_FAILED", f"读取数据库文件长度失败：{error}") from error
         superblock.validate_file_size(actual_size)
+        if superblock.version != self._superblock.version:
+            raise _format_error(
+                "VERSION_MODE_MISMATCH",
+                f"不能把 v{superblock.version} Superblock 写入 v{self._superblock.version} 文件",
+                field="version",
+                offset=8,
+            )
         encoded = superblock.encode()
-        # 复用解码器检查相对页号、固定版本和保留区，保存前不改变文件。
-        validated = Superblock.decode(encoded)
+        # 复用解码器检查相对页号、版本、保留区与 v2 CRC，保存前不改变文件。
+        validated = Superblock.decode(
+            encoded,
+            allow_versions=(self._superblock.version,),
+        )
         if validated != superblock:
             raise ValueError("待保存的 Superblock 未通过固定格式校验")
         try:
@@ -592,6 +740,25 @@ class DatabaseFile:
             os.fsync(self._handle.fileno())  # type: ignore[union-attr]
         except OSError:
             return
+
+    @staticmethod
+    def _normalize_v2_page(raw: bytes, *, page_id: int) -> bytes:
+        """拒绝 v1/未知页混入 v2 文件；全零输入转成合法空数据页。"""
+
+        if raw[:DATA_PAGE_HEADER_SIZE] == bytes(DATA_PAGE_HEADER_SIZE):
+            return encode_data_page_header(page_id=page_id, version=DATA_PAGE_VERSION_V2) + bytes(
+                PAGE_SIZE - DATA_PAGE_HEADER_SIZE
+            )
+        version = int.from_bytes(raw[24:28], "little")
+        if page_id != SUPERBLOCK_PAGE_ID and version != DATA_PAGE_VERSION_V2:
+            raise _format_error(
+                "MIXED_PAGE_VERSION",
+                f"v2 文件的 page {page_id} 必须使用数据页 version=2，实际为 {version}",
+                page_id=page_id,
+                field="version",
+                offset=page_id * PAGE_SIZE + 24,
+            )
+        return raw
 
     def update_superblock(self, **changes: int) -> Superblock:
         """以不可变替换方式保存页 0，方便测试和后续存储层调用。"""
@@ -666,10 +833,22 @@ def open_database(path: str | os.PathLike[str]) -> DatabaseFile:
     return DatabaseFile.open(path)
 
 
+def open_database_v2(path: str | os.PathLike[str]) -> DatabaseFile:
+    """显式打开带 CRC32 的 v2 文件；不会升级已有 v1 文件。"""
+
+    return DatabaseFile.open_v2(path)
+
+
 def initialize_database(path: str | os.PathLike[str]) -> DatabaseFile:
     """函数式显式初始化入口。"""
 
     return DatabaseFile.initialize(path)
+
+
+def initialize_database_v2(path: str | os.PathLike[str]) -> DatabaseFile:
+    """显式初始化带 CRC32 的 v2 文件。"""
+
+    return DatabaseFile.initialize_v2(path)
 
 
 # 便于课程讲义和后续代码使用更短的名称；实现仍只有 DatabaseFile 一份。
@@ -683,5 +862,7 @@ __all__ = [
     "Superblock",
     "encode_data_page_header",
     "initialize_database",
+    "initialize_database_v2",
     "open_database",
+    "open_database_v2",
 ]

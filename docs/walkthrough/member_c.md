@@ -178,3 +178,117 @@ python -m pytest -q                                     64 passed
 静态检查还包括 `tools/generate_contract_hash.py --check`、`tools/check_import_boundaries.py`、`tools/check_task_catalog.py` 和 `tools/check_utf8.py`；均通过。冻结契约哈希仍为 `e086cafec0a281ca94d3141731d4b227369879ad3345cbae2653cf76f8f1aa3b`。C-B01 至 C-B06 的生产代码均没有 sqlite3、SQLAlchemy、Lark、PLY、pass、TODO、FIXME、dummy row 或测试专用假返回。
 
 现场口述练习：解释 `DatabaseFile.append_page()` 为什么必须先让物理长度与新 page_count 一致，再写 page 0；解释 `Page.insert()` 为什么把新 Slot 的 8 字节计入容量；解释 `RowCodec.decode()` 为什么拒绝尾字节；解释 `BufferPool.fetch_page()` 为什么在写回成功之后才删除 victim；解释 `TableHeap.scan()` 为什么把 `iter_live()` 结果复制后才 yield。小修改已经实现为 `free_list_chain()`、`Page.live_count`、`RowCodec.encoded_size()` 和 `BufferPool.pinned_pages`，每个都有对应测试或现场可检查结果。
+
+## C-E01 真实实现讲解：删除空间复用
+
+本扩展只修改 `Page` 的页内布局算法和对应测试。`Page.insert()` 现在委托
+`insert_reusing_hole()`；调用者仍得到新的 slot_id，旧 tombstone 的 slot_id、
+flags 和 RID 从不重编号。插入前先计算 `directory_end = free_start + 8`，保证
+新增 Slot 目录不会覆盖记录；随后 `find_hole(payload_length)` 校验当前页，
+收集删除槽区间、合并相邻洞，再扣除存活 payload，按起始偏移 first-fit。
+
+有洞时只写入新 payload 和目录末尾的新 Slot，`free_end` 不变；没有合适洞时
+沿原页尾路径写入并同时前移 `free_end`。容量或目录不足会在任何字节修改前
+抛出 `PageFullError`，所以 `test_hole_too_small` 和
+`test_slot_directory_space_required` 可以用前后字节快照证明失败原子性。
+`Page.from_bytes()` 对 overlap 检查只比较存活记录，允许已删除 payload 作为
+可复用洞；读取旧 slot 仍由 `RecordDeletedError` 拒绝。
+
+真实测试是 `test_reuse_payload_not_slot`、`test_hole_too_small`、
+`test_slot_directory_space_required` 和 `test_reopen_reuse_consistent`。代表性
+调用链为 `Page.insert` → `insert_reusing_hole` → `find_hole` →
+`SLOT_STRUCT.pack_into`；失败链在目录边界检查或 `find_hole` 返回 None 后
+保持原始 `bytearray`。该扩展不改变 `StoragePort` 和 DiskManager 文件格式。
+
+## C-E02 真实实现讲解：页面压缩与 RID 保持
+
+`Page.compact()` 先保存 `raw_before = bytes(self._data)`，用
+`Page.from_bytes(raw_before)` 完整验证页头、目录和存活记录。验证成功后在
+新的 4096 字节缓冲中从页尾向前复制每个存活 slot 的 payload，并按原
+slot_id 构造 `new_slots`；删除槽写成 `offset=0、length=0、flags` 保留
+tombstone。最后重新写目录、设置 `free_start=32+8*slot_count` 和
+`free_end=payload_limit-live_payload_bytes`，一次替换原状态。因而压缩不会
+改变 RID，也不会在源记录尚未复制时被原地覆盖。
+
+`test_rid_stable_after_compact` 检查槽 0、2、4 的值和 slot_id，槽 1、3 的
+删除状态及零长度；`test_compact_free_space` 断言五槽页的
+`free_start=72、free_end=3096`；`test_compact_idempotent` 比较连续两次的
+完整字节；`test_compact_corrupt_page_rejected` 将目录改成重叠记录并确认
+压缩前字节不变。异常路径只在临时构造阶段抛 `StorageFormatError`，不会写回
+磁盘或改变原对象。
+
+## C-E03 真实实现讲解：Free Space Map
+
+`FreeSpaceMap` 是纯内存、可重建的 `page_id → FreeSpaceEntry` 索引。每个
+entry 保存 table_id 和 `free_end-free_start` 的连续容量上界；
+`find(required)` 的 required 已包含新 Slot 的 8 字节，并按容量、page_id
+确定排序。`refresh(page)` 只读取真实 Page 字段，删除 tombstone 不改变
+free_start/free_end，因此不会虚增容量；`rebuild()` 可在重启后从页对象重新
+生成全部提示，不产生旁路元数据文件。
+
+`TableHeap` 增加 `free_space_map`/`fsm` 属性和 `rebuild_free_space_map()`。
+插入先得到真实页链，再使用 Map 候选；每个候选在 `Page.from_bytes()` 后重新
+执行 `page.insert()`。过期高估遇到 `PageFullError` 时立即 refresh，并继续
+页链候选，最终仍按原逻辑追加新页，避免错误提示导致错误写入或死循环。
+成功插入、追加新页、连接旧页和 tombstone 删除都会刷新对应 entry。
+
+`test_choose_existing_space` 验证 20/500/50 字节提示只选择 page 3；
+`test_stale_overestimate` 注入 500 字节高估后确认真实满页不被覆盖且新行落到
+新页；`test_rebuild_after_reopen` 丢弃旧 Map 后确认首次插入会从页链重建；
+`test_delete_without_reuse_no_gain` 确认基础删除容量提示不变。这个扩展只改
+善候选页搜索，StoragePort、RID 和持久化格式保持不变。
+
+## C-E04 真实实现讲解：页面校验和与 v2
+
+`checksum.py` 的 `crc32()` 复制 4096 字节输入并把 `[4092:4096]` 清零，
+`seal_page()` 将 CRC32 以 little-endian uint32 写回临时副本，
+`verify_page()` 在不修改输入的情况下比较 expected/actual 并抛带
+`page_id、checksum_offset、expected_crc、actual_crc` 的 `ChecksumError`。
+
+核心 v1 `DatabaseFile.open()` 仍只允许 version=1；显式
+`DatabaseFile.open_v2()`、`initialize_v2()` 和函数式 `open_database_v2()`
+才启用 version=2。v2 的 Superblock、Catalog page、`DatabaseFile.read_page`
+和写回路径均先验 CRC，v1 文件的字节和 version 不会被升级。`Page.new(...,
+version=2)` 将 `payload_limit` 设为 4092，`Page.from_bytes()` 先验 CRC 再
+解释 slot，`to_bytes()` 写回新的 CRC。DiskManager 的 v2 空白页、FREE 页和
+追加页也使用同一封装，BufferPool 因而可以继续复用原有 dirty 写回流程。
+
+真实测试为 `test_v2_crc_roundtrip`、参数化的 `test_detect_bit_flip`、
+`test_v2_exact_capacity` 和 `test_v1_not_silently_upgraded`。正常链路是
+`Page.to_bytes` → `seal_page` → `DatabaseFile.write_page` →
+`verify_page` → `Page.from_bytes`；翻转页头或 payload 任一位都会在解释
+slot 前抛 `ChecksumError`。CRC 只提供损坏检测，不提供恢复、加密或事务原子性。
+
+## C-E05 真实实现讲解：Clock 替换策略
+
+`ReplacementPolicy` 新增 `CLOCK`，`Replacer` 在该策略下维护
+`_reference`、`_hand_index` 和有限扫描计数。`record_load()` 与
+`record_access()` 置 reference bit=1；`choose_victim()` 从 hand 开始，
+跳过 pin 帧，遇到引用位 1 就清零并给第二次机会，遇到 0 才返回页号并把
+hand 留在后继位置。扫描上限为 `2*len(order)`，全 pin 时返回 None，
+BufferPool 继续抛原有 `BufferFullError`。
+
+`remove()` 在删除页后修正环位置，脏页写回仍完全由 BufferPool 负责，避免
+Clock 复制一套 I/O。`reference_bits`、`hand`、`hand_index` 和 `scan_steps`
+提供只读观察，便于讲解和隐藏测试。`test_second_chance` 验证 A 的引用位
+被清零后选择 B 且 hand 回到 A；`test_skip_pinned` 验证 pin 页不被选择；
+`test_all_pinned_bounded` 断言扫描恰好在有限步数结束；
+`test_dirty_clock_eviction` 验证 dirty 页先写回再淘汰并能重启读回。
+
+## 扩展验证记录
+
+扩展实现后真实命令如下；最后一次执行结果应同步到本文件和
+`delivery/member_c.json`：
+
+```text
+python -m compileall -q minidb tests                         PASS
+python -m pytest -q tests/storage/test_c_e01.py               4 passed
+python -m pytest -q tests/storage/test_c_e02.py               4 passed
+python -m pytest -q tests/storage/test_c_e03.py               4 passed
+python -m pytest -q tests/storage/test_c_e04.py               5 passed
+python -m pytest -q tests/storage/test_c_e05.py               4 passed
+python -m pytest -q tests/contracts tests/storage             76 passed
+python -m pytest -q                                           85 passed
+```
+
+扩展代码只使用 Python 标准库，未修改冻结 contracts 或 contracts.sha256。
