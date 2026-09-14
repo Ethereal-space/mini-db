@@ -1,0 +1,14 @@
+[project]
+name = "minidb-member-a"
+version = "0.1.0"
+description = "MiniDB member A core SQL frontend"
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[dependency-groups]
+test = ["pytest==9.1.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers -p no:cacheprovider"

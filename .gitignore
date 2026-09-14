@@ -1,0 +1,10 @@
+.venv/
+.idea/
+.git/
+__pycache__/
+.pytest_cache/
+pytest-cache-files-*/
+*.pyc
+*.db
+_integration_input/
+_integration_output/
