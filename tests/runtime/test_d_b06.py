@@ -148,3 +148,43 @@ def test_db06_encoding_error(tmp_path: Path) -> None:
     assert code == 1
     assert factory.calls == []
     assert "读取 SQL 源失败" in stderr.getvalue()
+
+
+def test_db06_interactive_meta_commands_and_multiple_statements() -> None:
+    app = FakeApp()
+    factory = RecordingFactory(app)
+    stdin, stdout, stderr = _streams(".help\nSELECT a; SELECT b;\n.quit\n")
+
+    code = main(["--interactive"], factory, stdin, stdout, stderr)
+
+    assert code == 0
+    assert [source for source, _trace in app.calls] == ["SELECT a;", "SELECT b;"]
+    assert "交互模式" in stdout.getvalue()
+    assert stdout.getvalue().count("执行完成") == 2
+    assert stderr.getvalue() == ""
+
+
+def test_db06_interactive_keeps_semicolon_inside_string_and_supports_multiline() -> None:
+    app = FakeApp()
+    factory = RecordingFactory(app)
+    source = "SELECT 'a;b'\nFROM demo;\n.exit\n"
+    stdin, stdout, stderr = _streams(source)
+
+    code = main(["--interactive"], factory, stdin, stdout, stderr)
+
+    assert code == 0
+    assert app.calls == [("SELECT 'a;b'\nFROM demo;", False)]
+    assert "...>" in stdout.getvalue()
+    assert stderr.getvalue() == ""
+
+
+def test_db06_interactive_rejects_file_combination() -> None:
+    app = FakeApp()
+    factory = RecordingFactory(app)
+    stdin, stdout, stderr = _streams("SELECT a;")
+
+    code = main(["--interactive", "--file", "input.sql"], factory, stdin, stdout, stderr)
+
+    assert code == 2
+    assert factory.calls == []
+    assert "不能与 --file 同时使用" in stderr.getvalue()

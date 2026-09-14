@@ -10,10 +10,10 @@
 - `operators.py`: `85347c58dcfc74134d1250ec20c2bf74ef7bf97b233754dfeee152bd56d93074`
 - `command_executors.py`: `a81e9a90b0e844e30765427678f46a3899ac506ee6b912d5a08ade2fd7426fef`
 - `execution_service.py`: `bba0e9cfad41f0f1b7667f0af12c7ce95538e8230669772cb3fd47c2d607487e`
-- `result_formatter.py`: `376de5e82dfab4781dd57398738988b5bbb3c4b55455e7258f09ac418cb0c166`
-- `cli_service.py`: `225ebd5e62a971c1e3a1ce1c204e3c734fbcd334240f3eaa375c34345e8a64ab`
+- `result_formatter.py`: `6229866c5729603f83f45f8bf8873c9a796d6fbc3ff2843273e2174812173070`
+- `cli_service.py`: `ff34d4763c4dd0a69e4ef8900a39d3a00260a12e88f308a5356396e232922070`
 
-这些哈希对应完成首轮实现后的生产代码；后续验证只修改本文和 delivery，不修改上述生产文件。
+这些哈希对应当前整合后的生产代码；交互模式和查询摘要修复也包含在相应文件中。
 
 ## D-B01：BoundExpression 求值器
 
@@ -93,11 +93,11 @@ mark_delete 的领域错误原样传播；原始 OSError 转换为带表名、pa
 
 真实文件是 `minidb/runtime/cli_service.py`，关键符号为 `main`、`_build_parser` 和可注入的 `AppFactory` 类型。
 
-`main(argv, app_factory, stdin, stdout, stderr)` 支持 `--db`、`--file`、`--trace`、`--policy lru|fifo`、`--capacity` 和练习加入的 `--encoding`。capacity 在工厂调用前验证为正整数。指定文件时按明确编码读取；否则一次读取 stdin 到 EOF。完整 source 只调用一次 `app.execute(source, trace)`，不会用 `split(';')` 破坏字符串或注释。工厂返回上下文管理器，正常、领域错误和 I/O 错误都经过 with 退出。
+`main(argv, app_factory, stdin, stdout, stderr)` 支持 `--db`、`--file`、`--interactive`、`--trace`、`--policy lru|fifo`、`--capacity` 和练习加入的 `--encoding`。capacity 在工厂调用前验证为正整数。指定文件时按明确编码读取；没有 `--file` 且 stdin 是终端时自动进入交互模式，也可以显式传 `--interactive`。交互循环按字符串/注释状态识别第一个真正的分号，支持多行 SQL 和 `.help`、`.quit`、`.exit`；一条语句的领域错误写入 stderr 后继续接收下一条。批处理路径仍只调用一次 `app.execute(source, trace)`，不会用 `split(';')` 破坏字符串或注释。工厂返回上下文管理器，正常、领域错误和 I/O 错误都经过 with 退出。
 
 退出码为：成功 0；MiniDBError、文件和运行 I/O 错误 1；参数错误 2。只捕获这些预期错误，未知程序缺陷继续暴露。结果写 stdout，错误写 stderr，单元测试不会等待真实终端输入。
 
-测试位于 `tests/runtime/test_d_b06.py`：`test_db06_stdin`、`test_db06_utf8`、`test_db06_trace`、`test_db06_error` 和 `test_db06_bad_capacity` 验证完整源码、中文、Trace、带第 3 行 Span 的语法错误和工厂调用次数。
+测试位于 `tests/runtime/test_d_b06.py`：`test_db06_stdin`、`test_db06_utf8`、`test_db06_trace`、`test_db06_error`、`test_db06_bad_capacity`、`test_db06_interactive_meta_commands_and_multiple_statements`、`test_db06_interactive_keeps_semicolon_inside_string_and_supports_multiline` 和 `test_db06_interactive_rejects_file_combination` 验证完整源码、中文、Trace、带第 3 行 Span 的语法错误、工厂调用次数、交互元命令、多语句和多行字符串。
 
 讲解题答案：字符串和注释内部也允许出现分号，只有 Lexer/Parser 知道分号是否位于语句边界，因此 CLI 不能直接拆分。
 

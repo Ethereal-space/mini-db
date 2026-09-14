@@ -90,6 +90,18 @@ python -X utf8 -m minidb --db demo/mini.db --file demo/reopen.sql --trace
 `lru` 或 `fifo`，`--capacity` 控制缓冲池页数。演示数据库是可删除的运行产物，
 不会提交到仓库。
 
+也可以直接进入交互模式。终端运行时省略 `--file` 会自动进入；使用
+`--interactive` 可以在脚本或测试输入中强制进入：
+
+```powershell
+python -X utf8 -m minidb --db demo/interactive.db --interactive
+```
+
+在 `minidb> ` 提示符后输入以分号结束的 SQL，按回车立即执行；没有结束分号
+时会显示 `...> ` 并继续收集下一行。`.help` 显示帮助，`.quit` 或 `.exit`
+退出。交互模式会在单条 SQL 出错后继续等待下一条输入；Windows 终端按
+`Ctrl+Z` 后回车、Linux/macOS 按 `Ctrl+D` 结束标准输入。
+
 ## 最终整合
 
 将四份完整项目副本放入：

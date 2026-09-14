@@ -36,52 +36,78 @@
   ],
   "test_results": [
     {
-      "tasks": ["D-B01"],
+      "tasks": [
+        "D-B01"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b01.py",
       "status": "passed",
       "result": "13 passed"
     },
     {
-      "tasks": ["D-B02"],
+      "tasks": [
+        "D-B02"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b02.py",
       "status": "passed",
       "result": "6 passed"
     },
     {
-      "tasks": ["D-B03"],
+      "tasks": [
+        "D-B03"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b03.py",
       "status": "passed",
       "result": "6 passed"
     },
     {
-      "tasks": ["D-B04"],
+      "tasks": [
+        "D-B04"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b04.py",
       "status": "passed",
       "result": "6 passed"
     },
     {
-      "tasks": ["D-B05"],
+      "tasks": [
+        "D-B05"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b05.py",
       "status": "passed",
       "result": "6 passed"
     },
     {
-      "tasks": ["D-B06"],
+      "tasks": [
+        "D-B06"
+      ],
       "command": "python -m pytest -q tests/runtime/test_d_b06.py",
       "status": "passed",
-      "result": "6 passed"
+      "result": "9 passed"
     },
     {
-      "tasks": ["D-B01", "D-B02", "D-B03", "D-B04", "D-B05", "D-B06"],
+      "tasks": [
+        "D-B01",
+        "D-B02",
+        "D-B03",
+        "D-B04",
+        "D-B05",
+        "D-B06"
+      ],
       "command": "python -m pytest -q tests/contracts tests/runtime",
       "status": "passed",
-      "result": "63 passed"
+      "result": "66 passed"
     },
     {
-      "tasks": ["D-B01", "D-B02", "D-B03", "D-B04", "D-B05", "D-B06"],
+      "tasks": [
+        "D-B01",
+        "D-B02",
+        "D-B03",
+        "D-B04",
+        "D-B05",
+        "D-B06"
+      ],
       "command": "python -m pytest -q",
       "status": "passed",
-      "result": "72 passed"
+      "result": "355 passed"
     }
   ],
   "contract_hash": "e086cafec0a281ca94d3141731d4b227369879ad3345cbae2653cf76f8f1aa3b",
