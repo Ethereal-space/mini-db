@@ -2,19 +2,31 @@
   "schema_version": 1,
   "member": "B",
   "module": "compiler",
-  "completed_tasks": ["B-B01", "B-B02", "B-B03", "B-B04", "B-B05", "B-B06"],
-  "verified_tasks": ["B-B01", "B-B02", "B-B03", "B-B04", "B-B05", "B-B06", "contracts-compiler", "compileall", "diff-check"],
+  "completed_tasks": ["B-B01", "B-B02", "B-B03", "B-B04", "B-B05", "B-B06", "B-E01", "B-E02", "B-E03", "B-E04"],
+  "verified_tasks": ["B-B01", "B-B02", "B-B03", "B-B04", "B-B05", "B-B06", "B-E01", "B-E02", "B-E03", "B-E04", "contracts-compiler", "compileall", "diff-check"],
   "modified_files": [
     "minidb/compiler/catalog_service.py",
     "minidb/compiler/semantic.py",
     "minidb/compiler/planner.py",
     "minidb/compiler/optimizer.py",
+    "minidb/compiler/rules.py",
+    "minidb/compiler/projection_pruning.py",
+    "minidb/compiler/arithmetic.py",
+    "minidb/compiler/update_planner.py",
+    "minidb/compiler/order_limit.py",
     "minidb/compiler/plan_formatter.py",
     "tests/compiler/test_b_b01.py",
     "tests/compiler/test_b_b02.py",
     "tests/compiler/test_b_b03.py",
     "tests/compiler/test_b_b04.py",
     "tests/compiler/test_b_b06.py",
+    "tests/compiler/test_b_e01.py",
+    "tests/compiler/test_b_e02.py",
+    "docs/extensions/b_projection_pruning_v1.json",
+    "tests/compiler/test_b_e03.py",
+    "docs/extensions/b_arithmetic_v1.json",
+    "tests/compiler/test_b_e04.py",
+    "docs/extensions/b_update_v1.json",
     "docs/walkthrough/member_b.md",
     "delivery/member_b.json"
   ],
@@ -113,6 +125,91 @@
       "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/contracts tests/compiler",
       "exit_code": 0,
       "result": "52 passed; Python 3.14.7, pip 25.3, pytest 9.1.1"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/compiler/test_b_e01.py",
+      "exit_code": 0,
+      "result": "4 passed; Python 3.14.7, pytest 9.1.1"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/compiler/test_b_b06.py tests/compiler/test_b_e01.py",
+      "exit_code": 0,
+      "result": "9 passed; Python 3.14.7, pytest 9.1.1"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m compileall -q minidb",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/contracts tests/compiler",
+      "exit_code": 0,
+      "result": "56 passed; Python 3.14.7, pip 25.3, pytest 9.1.1"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/compiler/test_b_e02.py",
+      "exit_code": 0,
+      "result": "4 passed; Python 3.14.7, pytest 9.1.1"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m compileall -q minidb",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/contracts tests/compiler",
+      "exit_code": 0,
+      "result": "60 passed; Python 3.14.7, pip 25.3, pytest 9.1.1"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/compiler/test_b_e03.py",
+      "exit_code": 0,
+      "result": "4 passed; Python 3.14.7, pytest 9.1.1"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m compileall -q minidb",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/contracts tests/compiler",
+      "exit_code": 0,
+      "result": "64 passed; Python 3.14.7, pip 25.3, pytest 9.1.1"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/compiler/test_b_e04.py",
+      "exit_code": 0,
+      "result": "5 passed; Python 3.14.7, pytest 9.1.1"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m compileall -q minidb",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/contracts tests/compiler",
+      "exit_code": 0,
+      "result": "69 passed; Python 3.14.7, pip 25.3, pytest 9.1.1"
     },
     {
       "command": "git diff --check",

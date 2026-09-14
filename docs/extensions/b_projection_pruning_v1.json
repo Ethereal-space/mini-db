@@ -1,0 +1,17 @@
+{
+  "feature": "projection_pruning",
+  "version": 1,
+  "purpose": "描述 SELECT 的安全投影裁剪布局，不改变核心 SeqScan 行布局",
+  "payload_fields": {
+    "columns": "按原表序号升序排列的保留列数组",
+    "index_map": "旧列序号字符串到裁剪后序号的映射",
+    "child": "JSON 计划节点，当前快照为 SeqScan(table)",
+    "predicate": "按裁剪后列序号重绑的 JSON 表达式，或 null",
+    "projection": "包含裁剪后 indices 和原输出 names 的 JSON 对象"
+  },
+  "safety": {
+    "delete": "disabled",
+    "core_seq_scan_layout": "unchanged",
+    "rid_preservation": "required for future execution integration"
+  }
+}

@@ -100,3 +100,57 @@
 为兼容 B-B05，`analyze_select` 和 `analyze_delete` 现在转调上述入口；`bind_expression` 的 Identifier 分支也统一调用 `resolve_column`。冻结 AST 没有被原地替换。`tests/compiler/test_b_b03.py` 使用写方法调用即失败的 FakeCatalog，5 项测试分别覆盖列 ordinal/type/Span、星号展开、显式投影顺序与重复、缺表缺列错误位置，以及 DELETE 原表元数据和条件 index=2。
 
 理解题：不能用字典表示 `SELECT name,name`，因为字典键唯一，会丢失重复输出项；有序 tuple `indices/names` 才能同时保留顺序和重复。小修改练习 `SELECT age,id` 应得到原行索引 `(2, 0)` 与名称 `('age', 'id')`，且原 AST 不变。整合时 A 提供等价 AST，B-B05 构造计划，D 按原行索引执行和投影，D-B04 使用保留的 RID；本卡独立测试不连接其他成员真实实现。
+
+## B-E01 可注册优化规则框架
+
+本任务新增 `minidb/compiler/rules.py` 的 `Rule`、`RuleOptimizer`、`RuleTrace` 和 `RuleTraceEntry`，并把 B-B06 的常量比较与布尔化简包装为 `optimizer.py` 中的两个默认规则。`Rule` 是不可变描述，包含稳定 `name`、`priority` 和 `apply(PlanNode)->PlanNode`；`RuleOptimizer.register` 拒绝重名，`rules` 按 `(priority, name)` 排序，因此逆序注册不会改变执行顺序。
+
+`RuleOptimizer.run` 每轮按选中规则执行，使用 Plan 的结构相等性比较变化，而不是比较对象地址；整轮没有变化即达到固定点。`enabled_names` 可以只启用指定规则，未知名称立即报错。超过 `max_rounds` 时抛出 `OptimizationError`，阶段为 `OPTIMIZATION`、代码为 `ITERATION_LIMIT`，context 包含最后规则名和轮次上限。规则 apply 的真实异常直接传播，不伪装成优化成功。`RuleTrace` 只在前后结构不等时记录规则名、轮次、稳定的计划前后文本和变化数。
+
+`optimizer.optimize` 保持 B-B06 原调用形式，并增加 `enabled_names`、`max_rounds`、`rules` 选项；默认注册 `constant_comparison`（优先级 10）和 `boolean_simplify`（优先级 20），完成后把 RuleTrace 转换为已有 `OptimizationReport`。只启用常量规则时，`TRUE AND age>=18` 保持不变且没有布尔命中；启用两条规则时仍得到 `age>=18`，原始不可变计划不变。
+
+测试 `tests/compiler/test_b_e01.py` 的 4 项测试分别验证默认规则结果与 Trace、显式规则选择、同优先级确定性和重名拒绝、振荡规则在 `max_rounds=3` 后停止并报告结构化错误。测试使用冻结 Plan 与测试内自定义 Rule，不依赖 Catalog、Storage 或其他成员模块。
+
+理解题答案：规则可能互相暴露新的优化机会，所以需要继续运行到固定点；优先级和名称排序保证结果可重现；轮次上限保护错误的振荡规则，避免优化器无限循环。小修改练习对应 `enabled_names={"constant_comparison"}`：关闭规则后布尔规则没有命中日志，且输出保持 `TRUE AND age>=18`。
+
+整合边界：这是 B 内部可选扩展，不改变 `CompilerPort`、冻结 Plan 或其他成员接口；集中整合只选择已经验收的 B 扩展分支，D 仍负责真实数据上的执行验证。
+
+## B-E02 Projection Pruning 与冗余节点删除
+
+本任务新增 `minidb/compiler/projection_pruning.py` 的 `required_columns`、`compose_projects` 和 `prune_plan`，并新增 `docs/extensions/b_projection_pruning_v1.json` 快照说明。输入是冻结的 SELECT `ProjectPlan`/`FilterPlan`/`SeqScanPlan`；输出是 `projection_pruning/v1` 的冻结 `ExtensionPlan`，或者对 DELETE 原样返回原计划。实现不改变核心 SeqScan 的全行布局，不读写数据页，也不导入 D 的执行器。
+
+`required_columns` 对 Bound 表达式递归收集 `BoundColumn.index`；对计划从 Project 输出需求向下传播，遇到 Filter 时并入谓词列引用，最后返回排序且去重的原表序号。因此 `SELECT name WHERE age>=18` 需要 `(1, 2)`，而不是只需要投影列 `(1)`。`compose_projects` 将外层索引映射到内层索引，保留外层名称、顺序和重复项；宽度或越界索引违反计划契约时抛出 `PlanningError`。
+
+`prune_plan` 先安全删除恒真 Filter 并合并相邻 Project，再建立旧序号到新序号的 `index_map`。它递归重绑 predicate 中所有 `BoundColumn`，同时重写 projection indices，最终 payload 使用 JSON 基本值记录 `columns`、字符串键 `index_map`、`child`、`predicate` 和 `projection`。缺失必需列或缺失 SeqScan 不会静默跳过，而是报告规划错误。DELETE 路径明确禁用裁剪并保持 RID 所需的原计划结构。
+
+测试 `tests/compiler/test_b_e02.py` 的 4 项测试覆盖：`test_required_columns_include_predicate` 验证投影与 WHERE 的列并集；`test_project_composition_preserves_duplicates` 验证相邻 Project 的 `(1,1,2)` 映射和重复名称；`test_pruning_rebinds_every_index` 验证 `1→0`、`2→1`、谓词和投影同时重绑；`test_pruned_plan_matches_reference` 使用独立参考解释器在 Alice/Bob 两行上验证原计划与快照都输出 `[('Alice',)]`，并断言 DELETE 未裁剪。
+
+理解题答案：投影列集合不足以决定扫描列，因为 Filter、Join、Sort 等下游算子可能引用不输出的列；本任务至少把 Filter 谓词引用合并进需求集合。小修改练习是让 WHERE 同时引用 `id` 和 `age`，需求应扩展到 `(0,1,2)`，实现中的 `_expression_columns` 递归并集逻辑已经支持该情况。
+
+整合边界：B 独立完成需求分析、重绑定、快照和安全冗余删除；真实裁剪执行需要 D 增加对 `projection_pruning/v1` 布局的执行支持后才能进入集中整合，当前不能宣称端到端裁剪已启用。
+
+## B-E03 算术表达式类型检查与常量折叠
+
+本任务新增 `minidb/compiler/arithmetic.py` 的 `validate_payload`、`bind_arithmetic` 和 `fold_arithmetic`，以及 `docs/extensions/b_arithmetic_v1.json`。扩展使用冻结 `BoundExtension(feature='arithmetic', version=1, payload, span)`，不修改核心 Bound AST、Plan 或 Protocol。节点 payload 由 `kind`、`fields` 和可选源 Span 组成，支持 literal、column、binary 三种节点。
+
+`validate_payload` 检查 kind、fields 及 binary 所需的 `op/left/right`；`bind_arithmetic` 递归处理节点：字面量必须是非 bool 的 INT，列名通过 B-B03 的 `resolve_column` 绑定到 ordinal/name/dtype，二元操作只接受 `+/-/*` 且两侧最终都为 INT。每个纯常量二元节点在绑定时先检查 INT32 范围，错误携带对应运算 Span；`/` 明确报告 `UNSUPPORTED_OPERATOR`。
+
+`fold_arithmetic` 自底向上重建 payload，只有左右均为 literal 时才计算，否则保留 binary 结构，不读取行数据。加、减、乘每一步都检查 `[-2147483648, 2147483647]`，结果仍封装为 arithmetic/v1 的 INT literal；原 BoundExtension 和原始输入字典不被修改，重复折叠结构稳定。这样 `10+8` 可得到 18，再由核心比较形成 `age>18`；`age+1` 不能被折叠，因为列值随行变化。
+
+测试 `tests/compiler/test_b_e03.py` 的 4 项测试覆盖：`test_fold_course_example` 验证 10+8、Span 和 17/18/19 的比较结果；`test_fold_nested_arithmetic` 验证 `(2+3)*4-1=19`、输入不变和幂等；`test_arithmetic_rejects_overflow_and_types` 验证溢出、非 INT 和 `/` 的错误 code/Span；`test_arithmetic_predicate_equivalence` 用独立参考计算验证优化前后结果均为 `[False, False, True]`。
+
+理解题答案：`age+1` 的结果取决于当前行，编译阶段没有行值，因此只能保留该非纯常量子树，不能错误折叠成一个常量。小修改练习是加入一元负号并测试最小 INT 取负溢出；当前 v1 没有声明该运算符，因此不会把它伪装成已支持能力。整合时 A-E07 提供对应语法，D 需要实现同版本 arithmetic BoundExtension 求值后才能宣称完整 SQL 链路可用。
+
+## B-E04 UPDATE 语义检查与更新计划
+
+本任务新增 `minidb/compiler/update_planner.py` 的 `bind_assignments`、`validate_update` 和 `build_update_plan`，以及 `docs/extensions/b_update_v1.json`。UPDATE 使用 `update/v1` 的冻结 `ExtensionPlan` 快照，不扩展冻结 AST。`validate_update` 从节点 fields 读取表、assignments 和 where，通过只读 Catalog 获取 `TableMeta`；缺表报告 `SEMANTIC/TABLE_NOT_FOUND`。
+
+`bind_assignments` 先逐项调用 B-B03 `resolve_column`，以目标 ordinal 检查重复列，第二次赋值直接在其目标 Span 抛出 `DUPLICATE_UPDATE_COLUMN`，不会先放入字典再覆盖。之后用 B-B04 `bind_expression` 绑定右值，要求右值 dtype 与目标列完全相等；绑定完成后输出固定 `{index, expr}` 项并按目标 index 排序。右值列引用保留旧行 index，所以 `SET a=b,b=a` 会得到 0→1、1→0，执行器可以同时从同一旧行求值。
+
+`build_update_plan` 将 assignments、where 和 child 写入 JSON 兼容 payload。没有 WHERE 时 child 是全表 `SeqScan`；有 WHERE 时是 `Filter` 包住 `SeqScan`。两种路径都不生成 Project，确保后续删除/更新仍能获得 RID；绑定和计划构造不分配表号、不注册表、不访问 Storage。
+
+测试 `tests/compiler/test_b_e04.py` 的 5 项测试覆盖：`test_update_binds_assignments_by_schema` 验证 age/name 按 index 排序、WHERE id index=0 和 RID child；`test_update_duplicate_assignment_rejected` 验证第二次赋值的错误 code/Span；`test_update_type_and_unknown_column` 验证类型与未知列错误及 SET 位置；`test_update_without_where_has_full_scan` 验证无 Filter/Project 的 SeqScan 和版本 1；`test_update_column_swap_binding` 验证交换赋值引用旧行索引且没有写调用。
+
+理解题答案：重复 SET 列必须在转字典前检查，因为字典会覆盖旧项，丢失用户错误和第二个赋值位置。小修改练习已由 `test_update_column_swap_binding` 完成，两个 Bound 列分别指向旧行 index 1 和 0，不能顺序覆盖变量。
+
+整合边界：B-E04 独立完成 update/v1 的语义绑定和计划快照；完整 UPDATE 需要 A-E01 的输入、D-E02 的执行器和 C-E07 的变长行支持，集中整合时必须对齐同一版本。

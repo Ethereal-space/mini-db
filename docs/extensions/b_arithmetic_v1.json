@@ -1,0 +1,24 @@
+{
+  "feature": "arithmetic",
+  "version": 1,
+  "operators": ["+", "-", "*"],
+  "node_shape": {
+    "kind": "literal | column | binary",
+    "fields": {
+      "literal": ["value"],
+      "column": ["name"],
+      "binary": ["op", "left", "right"]
+    },
+    "span": "source Span supplied by the enclosing extension envelope"
+  },
+  "semantics": {
+    "operands": "INT only",
+    "result": "INT",
+    "range": "signed 32-bit integer",
+    "division": "unsupported in v1"
+  },
+  "compatibility": {
+    "frontend": "corresponds to A-E07 arithmetic syntax",
+    "executor": "requires D support for arithmetic BoundExtension before integration"
+  }
+}

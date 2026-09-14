@@ -19,6 +19,7 @@ from minidb.contracts.plans import (
 from minidb.contracts.source import Span
 
 from .plan_formatter import format_expression, format_plan
+from .rules import Rule, RuleOptimizer
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,24 +131,53 @@ def simplify_boolean(expr: BoundExpr, report: OptimizationReport | None = None) 
     return rebuilt
 
 
-def optimize(plan: PlanNode, report: OptimizationReport | None = None) -> PlanNode:
-    """重建计划树并优化其中表达式；原计划及其子节点保持不变。"""
-
-    active_report = report if report is not None else OptimizationReport()
+def _rewrite_plan(plan: PlanNode, transform, *, remove_true_filter: bool = False) -> PlanNode:
     if isinstance(plan, FilterPlan):
-        child = optimize(plan.child, active_report)
-        predicate = simplify_boolean(fold_constants(plan.predicate, active_report), active_report)
-        if isinstance(predicate, BoundLiteral) and predicate.dtype is DataType.BOOL and predicate.value:
-            active_report.record("filter_true_removed", format_plan(plan), format_plan(child))
+        child = _rewrite_plan(plan.child, transform, remove_true_filter=remove_true_filter)
+        predicate = transform(plan.predicate)
+        if remove_true_filter and isinstance(predicate, BoundLiteral) and predicate.dtype is DataType.BOOL and predicate.value:
             return child
         return FilterPlan(child, predicate, plan.span)
     if isinstance(plan, ProjectPlan):
-        return ProjectPlan(optimize(plan.child, active_report), plan.indices, plan.names, plan.span)
+        return ProjectPlan(_rewrite_plan(plan.child, transform, remove_true_filter=remove_true_filter), plan.indices, plan.names, plan.span)
     if isinstance(plan, DeletePlan):
-        return DeletePlan(plan.table, optimize(plan.child, active_report), plan.span)
+        return DeletePlan(plan.table, _rewrite_plan(plan.child, transform, remove_true_filter=remove_true_filter), plan.span)
     if isinstance(plan, (SeqScanPlan, CreateTablePlan, InsertPlan, ExtensionPlan)):
         return plan
     raise TypeError(f"不支持的 Plan 类型: {type(plan).__name__}")
 
 
-__all__ = ["OptimizationReport", "RuleHit", "fold_constants", "optimize", "simplify_boolean"]
+def _core_rules() -> tuple[Rule, ...]:
+    return (
+        Rule("constant_comparison", 10, lambda plan: _rewrite_plan(plan, lambda expr: fold_constants(expr))),
+        Rule("boolean_simplify", 20, lambda plan: _rewrite_plan(plan, lambda expr: simplify_boolean(expr), remove_true_filter=True)),
+    )
+
+
+def optimize(
+    plan: PlanNode,
+    report: OptimizationReport | None = None,
+    enabled_names=None,
+    *,
+    max_rounds: int = 8,
+    rules=None,
+) -> PlanNode:
+    """用可注册规则优化计划，同时兼容 B-B06 的旧调用形式。"""
+
+    active_report = report if report is not None else OptimizationReport()
+    optimizer = RuleOptimizer(_core_rules() if rules is None else rules, max_rounds=max_rounds)
+    result = optimizer.run(plan, enabled_names)
+    for entry in optimizer.trace.records:
+        active_report.record(entry.rule, entry.before, entry.after)
+    return result
+
+
+__all__ = [
+    "OptimizationReport",
+    "Rule",
+    "RuleHit",
+    "RuleOptimizer",
+    "fold_constants",
+    "optimize",
+    "simplify_boolean",
+]
