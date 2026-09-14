@@ -1,3 +1,6 @@
-"""成员 A 的词法、语法与 AST 前端实现包。"""
+"""SQL 前端的公开入口。"""
 
-__all__: list[str] = []
+from .lexer import Lexer
+from .parser import Frontend, Parser
+
+__all__ = ["Frontend", "Lexer", "Parser"]

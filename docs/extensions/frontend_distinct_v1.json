@@ -1,0 +1,90 @@
+{
+  "feature": "distinct",
+  "version": 1,
+  "scope": "frontend_only",
+  "source": "MiniDB四人实施手册公共v1及A-E01/A-E02/A-E03任务卡",
+  "payload_fields": [
+    "query"
+  ],
+  "node_format": {
+    "kind": "string",
+    "fields": "object",
+    "span": "start/end each contain offset,line,column"
+  },
+  "valid_examples": [
+    {
+      "sql": "SELECT DISTINCT * FROM t;",
+      "expected": {
+        "kind": "ExtensionStatement",
+        "fields": {
+          "feature": "distinct",
+          "version": 1,
+          "payload": {
+            "query": {
+              "kind": "SelectStmt",
+              "fields": {
+                "table": {
+                  "kind": "Identifier",
+                  "fields": {
+                    "name": "t"
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 23,
+                      "line": 1,
+                      "column": 24
+                    },
+                    "end": {
+                      "offset": 24,
+                      "line": 1,
+                      "column": 25
+                    }
+                  }
+                },
+                "columns": null,
+                "where": null
+              },
+              "span": {
+                "start": {
+                  "offset": 0,
+                  "line": 1,
+                  "column": 1
+                },
+                "end": {
+                  "offset": 24,
+                  "line": 1,
+                  "column": 25
+                }
+              }
+            }
+          }
+        },
+        "span": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 24,
+            "line": 1,
+            "column": 25
+          }
+        }
+      }
+    }
+  ],
+  "invalid_examples": [
+    {
+      "sql": "SELECT DISTINCT DISTINCT id FROM t;",
+      "unexpected": "DISTINCT"
+    },
+    {
+      "sql": "SELECT DISTINCT *,id FROM t;",
+      "unexpected": ","
+    }
+  ],
+  "execution_dependencies": [
+    "additional deduplication plan and executor tasks required"
+  ]
+}
