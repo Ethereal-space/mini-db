@@ -51,7 +51,9 @@ python -X utf8 -m compileall -q minidb
 python -X utf8 -m pytest -q
 ```
 
-期望输出为 Python 3.14.2、pip 25.3、pytest 9.1.1。CI 在 Python 3.14.2 的 Windows 与 Ubuntu 24.04 上执行相同核心检查。
+参考环境输出为 Python 3.14.2、pip 25.3、pytest 9.1.1；本项目接受
+`>=3.14,<3.15`，因此 Python 3.14.x 的补丁版本均可运行。CI 在 Python
+3.14.2 的 Windows 与 Ubuntu 24.04 上执行相同核心检查。
 
 核心演示：
 
@@ -69,6 +71,25 @@ SELECT * FROM student;
 
 验收同时检查 Token/AST/语义/原计划/优化计划 Trace、跨页数据、LRU 与 FIFO、dirty 写回、tombstone、Catalog 页式恢复以及程序重启后的数据恢复。详细边界与可重复断言均在任务卡中。
 
+当前基线已经包含集中装配入口。CLI 会把一个脚本先完整解析，再按语句执行
+`compile → optimize → execute`；成功的 CREATE 会立即对后续语句可见，发生
+后续语义或执行错误时保留已成功语句。运行固定演示并查看完整链路：
+
+```powershell
+python -X utf8 -m minidb --db demo/mini.db --file demo/core.sql --trace --policy lru --capacity 4
+```
+
+关闭程序后可用同一个文件验证重启恢复：
+
+```powershell
+python -X utf8 -m minidb --db demo/mini.db --file demo/reopen.sql --trace
+```
+
+`--trace` 输出每条语句独立的 `TOKEN`、`AST`、`SEMANTIC`、`BOUND`、`PLAN`、
+`OPTIMIZED_PLAN` 和 `EXECUTION` 事件；省略它只输出结果。`--policy` 可取
+`lru` 或 `fifo`，`--capacity` 控制缓冲池页数。演示数据库是可删除的运行产物，
+不会提交到仓库。
+
 ## 最终整合
 
 将四份完整项目副本放入：
@@ -82,7 +103,7 @@ _integration_input/member_d/
 
 向最终整合 AI 声明已经完成的扩展任务，它会按 [feature-groups.json](docs/integration/feature-groups.json) 选择完整功能组，校验契约与 24 项基础任务，并把结果、`feature_selection.json` 和 `integration-report.md` 写入 `_integration_output/mini-db/`。未声明扩展不会进入结果，部分扩展组会被跳过且不影响核心。
 
-仓库只保存四人共同基线。项目不规定成员的提交、分支、同步或推送方式；成员 AI 与最终整合 AI 均不执行 Git 提交或推送。
+仓库只保存四人共同基线。项目不规定成员的提交、分支、同步或推送方式；成员 AI 与最终整合 AI 均不执行 Git 提交或推送。当前 `main` 的集中入口实现位于 [minidb/integration/app.py](minidb/integration/app.py)，命令行转发位于 [minidb/__main__.py](minidb/__main__.py)；后续扩展仍按整合手册的声明和依赖规则选择性注册。
 
 ## 文档导航
 

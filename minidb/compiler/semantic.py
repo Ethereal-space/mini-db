@@ -87,6 +87,17 @@ def _get_table(stmt: InsertStmt, catalog: CatalogPort) -> TableMeta:
     table_name = _normalized_name(stmt.table.name, stmt.table.span)
     try:
         return catalog.get_table(table_name)
+    except SemanticError as error:
+        # 真实 CatalogService 已经给出结构化错误；补回 SQL 标识符 Span，
+        # 使 ApplicationPort 与使用 KeyError 的独立 Fake 保持同一定位契约。
+        if error.code == "TABLE_NOT_FOUND":
+            raise _error(
+                "TABLE_NOT_FOUND",
+                error.message,
+                stmt.table.span,
+                context=dict(error.context),
+            ) from error
+        raise
     except KeyError as error:
         raise _error(
             "TABLE_NOT_FOUND",
@@ -218,6 +229,15 @@ def _get_named_table(name: Identifier, catalog: CatalogPort) -> TableMeta:
     table_name = _normalized_name(name.name, name.span)
     try:
         return catalog.get_table(table_name)
+    except SemanticError as error:
+        if error.code == "TABLE_NOT_FOUND":
+            raise _error(
+                "TABLE_NOT_FOUND",
+                error.message,
+                name.span,
+                context=dict(error.context),
+            ) from error
+        raise
     except KeyError as error:
         raise _error("TABLE_NOT_FOUND", f"表 {table_name!r} 不存在", name.span, context={"table": table_name}) from error
 

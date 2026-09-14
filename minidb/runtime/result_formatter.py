@@ -24,7 +24,8 @@ def _format_table(result: ExecutionResult) -> str:
         if result.message:
             lines.append(result.message)
         lines.append(f"受影响行数: {result.affected_rows}")
-    if result.message and result.columns:
+    # 查询的默认 message 与上面的行数摘要相同，不重复打印；自定义消息仍保留。
+    if result.message and result.columns and result.message != f"返回 {len(result.rows)} 行":
         lines.append(result.message)
     if result.trace:
         lines.append("TRACE")

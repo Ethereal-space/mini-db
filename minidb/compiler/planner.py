@@ -31,6 +31,8 @@ from minidb.contracts.plans import (
 from minidb.contracts.ports import CatalogPort
 from minidb.contracts.results import TraceEvent
 
+from .plan_formatter import format_plan
+
 
 def _planning_error(message: str) -> PlanningError:
     return PlanningError("INVALID_BOUND_STATEMENT", message)
@@ -88,8 +90,11 @@ class Compiler:
             )
 
         self._trace("SEMANTIC", type(bound).__name__)
+        # Bound AST 是语义阶段的稳定快照；repr 只读冻结 dataclass，便于
+        # 整合入口在 Trace 中展示绑定后的列序号、类型和 Span。
+        self._trace("BOUND", repr(bound))
         plan = build_plan(bound)
-        self._trace("PLAN", type(plan).__name__)
+        self._trace("PLAN", f"{type(plan).__name__}\n{format_plan(plan)}")
         return plan
 
 

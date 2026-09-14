@@ -69,7 +69,7 @@
 
 计划结构如下：CREATE → `CreateTablePlan`；INSERT → `InsertPlan`；无 WHERE 的 SELECT → `ProjectPlan(SeqScanPlan)`；有 WHERE 的 SELECT → `ProjectPlan(FilterPlan(SeqScanPlan))`；无 WHERE 的 DELETE → `DeletePlan(SeqScanPlan)`；有 WHERE 的 DELETE → `DeletePlan(FilterPlan(SeqScanPlan))`。DELETE 树不包含 Project，因此执行器仍能从 SeqScan 获得带 RID 的 StoredRow。
 
-`Compiler.compile` 固定按 AST 语句类型执行语义分析，再调用 `build_plan`；语义成功后通过可选 `on_trace` 回调发出 `SEMANTIC` 和 `PLAN` 事件。语义失败会原样传播，不调用 `build_plan`，也不会发出成功事件。CREATE/INSERT 编译阶段只读 Catalog，不分配表号、不注册表、不写 Storage。
+`Compiler.compile` 固定按 AST 语句类型执行语义分析，再调用 `build_plan`；语义成功后通过可选 `on_trace` 回调发出 `SEMANTIC`、`BOUND` 和带树形内容的 `PLAN` 事件。语义失败会原样传播，不调用 `build_plan`，也不会发出成功事件。CREATE/INSERT 编译阶段只读 Catalog，不分配表号、不注册表、不写 Storage。
 
 测试文件 `tests/compiler/test_b_b05.py` 使用手工 Bound AST、FakeCatalog 和 TraceEvent 回调，覆盖：`test_select_plan_shape_with_and_without_filter`、`test_insert_plan_contains_schema_order_values`、`test_create_plan_does_not_allocate_identity`、`test_delete_plan_retains_rid_path`、`test_compile_stops_after_semantic_failure`。测试使用树形 `isinstance` 和字段断言验证结构、表元数据、值顺序、Span、RID 路径和调用次数。
 
