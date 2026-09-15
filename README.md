@@ -1,5 +1,9 @@
 # MiniDB：SQL 编译器、页式存储与执行引擎实验
 
+## 本机可视化工作台
+
+在仓库根目录运行 `run_gui.py`，或使用 Python 3.14 执行 `python -X utf8 -m minidb.integration.workbench_gui`。工作台提供真实 SQL 执行、结果表格、完整 Trace、表结构、前端扩展分析、页与缓存观察。首次使用可点击“完整演示（新库）”。使用方法和功能边界见 [工作台说明](docs/workbench.md)。
+
 本仓库用于《大型平台软件设计实习》的 MiniDB 小组实验。系统以一条可追踪的数据流为主线：
 
 ```text
