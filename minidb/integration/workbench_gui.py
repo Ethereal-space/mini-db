@@ -12,7 +12,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 import traceback
 
 from minidb.contracts import MiniDBError
-from .workbench_model import EXAMPLES, SOURCE, WorkbenchSession, analyze
+from .workbench_model import B_ACCEPTANCE_CASES, EXAMPLES, SOURCE, WorkbenchSession, analyze
 
 
 BG, NAVY, INK, MUTED, BLUE = "#eef2f7", "#13243c", "#1d304c", "#64748b", "#2563eb"
@@ -107,10 +107,12 @@ class Workbench:
         self.front_tab = self.tab("02  前端分析")
         self.store_tab = self.tab("03  页与缓存")
         self.help_tab = self.tab("04  使用指南")
+        self.acceptance_tab = self.tab("05  B 编译器验收")
         self.build_sql()
         self.build_frontend()
         self.build_storage()
         self.build_help()
+        self.build_acceptance()
         self.refresh(session.snapshot())
         self.load_example()
         root.bind("<F5>", lambda event: self.execute())
@@ -294,11 +296,83 @@ F5 或 Ctrl+Enter 执行编辑器中的完整脚本。SELECT 的结果展示在�
 “刷盘”将脏页写入磁盘。“重连”关闭并重新打开数据库，再次 SELECT 可以验证数据恢复。
 更改 LRU/FIFO 与容量后点击“应用并重连”；统计随新会话重新计数。观察快照本身不触碰缓存置换顺序。
 
-05  文件与退出
+        05  文件与退出
 默认工作库在仓库目录 data/workbench.db。打开数据库按钮只选择现有文件，新建按钮拒绝覆盖已有文件。
 关闭界面会刷盘并关闭连接。任务运行期间请等待完成后退出。
 运行入口：仓库根目录 run_gui.py。原来的纯前端演示保留在 run_frontend_gui.py。
 """)
+
+    def build_acceptance(self):
+        tools = ttk.Frame(self.acceptance_tab)
+        tools.pack(fill="x", pady=(0, 10))
+        ttk.Label(tools, text="选择评分项：", font=("Microsoft YaHei UI", 10, "bold")).pack(side="left")
+        self.acceptance_keys = tuple(B_ACCEPTANCE_CASES)
+        self.acceptance_selector = ttk.Combobox(
+            tools,
+            values=tuple(B_ACCEPTANCE_CASES[key].title for key in self.acceptance_keys),
+            state="readonly",
+            width=24,
+        )
+        self.acceptance_selector.current(0)
+        self.acceptance_selector.pack(side="left", padx=(6, 0))
+        self.acceptance_selector.bind("<<ComboboxSelected>>", self.acceptance_selected)
+        ttk.Label(tools, text="选择后自动运行对应的真实 pytest 测试。", foreground=MUTED).pack(side="left", padx=12)
+
+        body = ttk.Panedwindow(self.acceptance_tab, orient="horizontal")
+        body.pack(fill="both", expand=True)
+        code_frame, result_frame = ttk.Frame(body), ttk.Frame(body)
+        body.add(code_frame, weight=1)
+        body.add(result_frame, weight=1)
+        ttk.Label(code_frame, text="测试代码", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_code = text_box(code_frame, height=24)
+        self.acceptance_code.pack(fill="both", expand=True)
+        ttk.Label(result_frame, text="实时测试结果", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_result = text_box(result_frame, height=24)
+        self.acceptance_result.pack(fill="both", expand=True)
+        self._show_acceptance_code(B_ACCEPTANCE_CASES[self.acceptance_keys[0]])
+        set_text(self.acceptance_result, "请从上方选择评分项，系统将自动运行对应的真实 pytest 测试。")
+
+    def _show_acceptance_code(self, case):
+        code = (
+            f"评分项：{case.title}\n"
+            f"测试文件：{' '.join(case.test_paths)}\n"
+            f"测试命令：{case.command}\n\n"
+            f"代表性 SQL：\n{case.code}\n"
+        )
+        set_text(self.acceptance_code, code)
+
+    def acceptance_selected(self, event=None):
+        if self.busy:
+            self.status.set("正在执行验收测试，请等待当前测试完成。")
+            return
+        index = self.acceptance_selector.current()
+        if index < 0:
+            return
+        case = B_ACCEPTANCE_CASES[self.acceptance_keys[index]]
+        self._show_acceptance_code(case)
+        set_text(self.acceptance_result, "正在运行真实 pytest 测试，请稍候……")
+        self.submit(
+            f"正在运行 {case.title}…",
+            lambda: self.session.run_acceptance_case(case.case_id),
+            self.show_acceptance_result,
+        )
+
+    def show_acceptance_result(self, result):
+        status = "通过" if result["passed"] else "失败"
+        stdout = result["stdout"] or "（无标准输出）"
+        stderr = result["stderr"] or "（无标准错误）"
+        text = (
+            f"评分项：{B_ACCEPTANCE_CASES[result['case_id']].title}\n"
+            f"状态：{status}\n"
+            f"退出码：{result['returncode']}\n"
+            f"命令：{result['command']}\n\n"
+            f"标准输出：\n{stdout}\n\n"
+            f"标准错误：\n{stderr}\n\n"
+            f"结论：{result['conclusion']}\n"
+        )
+        set_text(self.acceptance_result, text)
+        self.tabs.select(self.acceptance_tab)
+        self.status.set(f"{B_ACCEPTANCE_CASES[result['case_id']].title}测试{status} · 已显示真实输出")
 
     def refresh(self, snapshot):
         self.snapshot = snapshot
