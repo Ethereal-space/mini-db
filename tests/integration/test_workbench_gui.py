@@ -25,7 +25,7 @@ def gui(tmp_path):
     root.destroy()
 
 
-def test_results_trace_frontend_and_page_widgets(gui):
+def test_results_trace_and_frontend_widgets(gui):
     result = gui.session.execute("CREATE TABLE t(id INT); INSERT INTO t(id) VALUES (7); SELECT id,id FROM t;")
     gui.show_execution(result)
     gui.select_result()
@@ -36,11 +36,8 @@ def test_results_trace_frontend_and_page_widgets(gui):
     gui.show_frontend(analyze("SELECT DISTINCT id FROM t;", ["distinct"]))
     assert "ExtensionStatement" in gui.ast_text.get("1.0", "end")
     assert len(gui.token_tree.get_children()) > 3
-    gui.show_page(gui.session.page(result["snapshot"]["tables"][0]["first_page_id"]))
-    assert len(gui.slots.get_children()) == 1
-    assert gui.page_canvas.find_all()
     assert [gui.tabs.tab(tab, "text") for tab in gui.tabs.tabs()] == [
-        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  Python 存储演示", "05  使用指南", "06  B 编译器验收"
+        "01  SQL 工作台", "02  前端分析", "03  Python 存储演示", "04  B 编译器验收"
     ]
 
 
@@ -88,7 +85,6 @@ def test_reconnect_clears_stale_result_and_refreshes_catalog(gui):
     gui.changed_database(gui.session.reconnect(policy="fifo", capacity=2))
     assert gui.results == []
     assert gui.result_select.get() == ""
-    assert gui.policy.get() == "fifo"
     assert len(gui.catalog.get_children()) == 1
 
 

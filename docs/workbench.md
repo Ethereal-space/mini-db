@@ -14,9 +14,8 @@ python -X utf8 -m minidb.integration.workbench_gui
 | --- | --- |
 | SQL 工作台 | SQL 导入/保存，CREATE/INSERT/SELECT/DELETE，中文结果，CSV 导出，Catalog，逐语句 Trace，语法/语义错误 |
 | 前端分析 | Token 及位置、AST、可开关的 UPDATE/ORDER BY/LIMIT/DISTINCT 解析 |
-| 页与缓存 | LRU/FIFO 与容量，刷盘和重连，命中/缺失/淘汰/读写，dirty/pin，缓冲事件，真实页字节、空间分布、槽位与 tombstone |
 | Python 存储演示 | 可编辑并执行带注释的存储 Python 脚本，显示真实标准输出、页面/缓存检查和 PASS/FAIL |
-| 使用指南 | 推荐演示顺序、执行边界、持久化与文件位置 |
+| B 编译器验收 | 词法、语法、语义、执行计划四项测试源码、预期结果与实际数据 |
 
 “完整演示”和“1000 行跨页演示”每次创建独立数据库。已存在的工作库不被覆盖。新建拒绝覆盖已有路径。
 
