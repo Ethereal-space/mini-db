@@ -2,7 +2,7 @@ import pytest
 
 from minidb.contracts import StorageError
 
-from minidb.integration.workbench_model import WorkbenchSession, analyze
+from minidb.integration.workbench_model import B_ACCEPTANCE_CASES, WorkbenchSession, analyze
 
 
 @pytest.fixture
@@ -87,3 +87,22 @@ def test_lexical_failure_replaces_previous_analysis():
     assert "LEXICAL" in result["error"]
     assert result["tokens"] == []
     assert result["ast"] == []
+
+
+def test_b_acceptance_cases_are_stable():
+    assert tuple(B_ACCEPTANCE_CASES) == ("lexical", "syntax", "semantic", "plan")
+    assert all(case.title and case.code.strip() and case.command for case in B_ACCEPTANCE_CASES.values())
+
+
+def test_run_acceptance_case_returns_real_pytest_output(tmp_path):
+    session = WorkbenchSession(tmp_path / "acceptance.db")
+    try:
+        result = session.run_acceptance_case("lexical")
+    finally:
+        session.close()
+    assert result["case_id"] == "lexical"
+    assert result["returncode"] == 0
+    assert result["passed"] is True
+    assert "passed" in result["stdout"]
+    assert result["command"]
+    assert result["conclusion"]

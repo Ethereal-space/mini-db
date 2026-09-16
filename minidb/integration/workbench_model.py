@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from dataclasses import dataclass
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import time
+from types import MappingProxyType
 
 from minidb.contracts import MiniDBError
 from minidb.frontend import Frontend, Lexer
@@ -16,6 +20,72 @@ from .app import MiniDBApplication
 
 
 SOURCE = Path(__file__).resolve().parents[2]
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptanceCase:
+    case_id: str
+    title: str
+    code: str
+    test_paths: tuple[str, ...]
+    conclusion: str
+
+    @property
+    def command(self) -> str:
+        return "python -m pytest -q -p no:cacheprovider " + " ".join(self.test_paths)
+
+
+B_ACCEPTANCE_CASES = MappingProxyType({
+    "lexical": AcceptanceCase(
+        "lexical",
+        "词法分析（4分）",
+        "CREATE TABLE student(id INT, name VARCHAR, age INT);\n"
+        "INSERT INTO student VALUES (1, 'Alice', 20);\n"
+        "SELECT id, name FROM student WHERE age >= 18;",
+        ("tests/frontend/test_a_b01.py", "tests/frontend/test_a_b02.py"),
+        "验证关键字、标识符、常量、运算符、注释和非法输入定位。",
+    ),
+    "syntax": AcceptanceCase(
+        "syntax",
+        "语法分析（4分）",
+        "CREATE TABLE student(id INT, name VARCHAR, age INT);\n"
+        "INSERT INTO student VALUES (1, 'Alice', 20);\n"
+        "SELECT id, name FROM student WHERE age >= 18;\n"
+        "DELETE FROM student WHERE id = 1;",
+        (
+            "tests/frontend/test_a_b03.py",
+            "tests/frontend/test_a_b04.py",
+            "tests/frontend/test_a_b05.py",
+            "tests/frontend/test_a_b06.py",
+        ),
+        "验证四类核心 SQL 的 AST 构造和典型语法错误。",
+    ),
+    "semantic": AcceptanceCase(
+        "semantic",
+        "语义分析（4分）",
+        "SELECT name FROM student WHERE age >= 18;\n"
+        "SELECT missing FROM student;\n"
+        "INSERT INTO student(id, name) VALUES (1, 'Alice');",
+        (
+            "tests/compiler/test_b_b01.py",
+            "tests/compiler/test_b_b02.py",
+            "tests/compiler/test_b_b03.py",
+            "tests/compiler/test_b_b04.py",
+        ),
+        "验证 Catalog、表列存在性、列绑定、类型和列数检查。",
+    ),
+    "plan": AcceptanceCase(
+        "plan",
+        "执行计划生成（4分）",
+        "SELECT id, name FROM student WHERE age >= 18;\n"
+        "DELETE FROM student WHERE id = 1;\n"
+        "SELECT name FROM student WHERE 1 = 1 AND age >= 18;",
+        ("tests/compiler/test_b_b05.py", "tests/compiler/test_b_b06.py"),
+        "验证 Project、Filter、SeqScan、DeletePlan 和优化计划结构。",
+    ),
+})
+
+
 EXAMPLES = {
     "01 · 创建学生表": "CREATE TABLE student(id INT, name VARCHAR, age INT);",
     "02 · 插入中文数据": "INSERT INTO student(id,name,age) VALUES (1,'张三',18);\nINSERT INTO student(id,name,age) VALUES (2,'李四',17);\nINSERT INTO student(id,name,age) VALUES (3,'Alice',22);",
@@ -65,6 +135,67 @@ class WorkbenchSession:
                 position = [exc.span.start.line, exc.span.start.column]
         return {"source": source, "results": results, "error": error, "position": position,
                 "seconds": time.perf_counter() - started, "snapshot": self.snapshot()}
+
+    def run_acceptance_case(self, case_id: str) -> dict:
+        case = B_ACCEPTANCE_CASES.get(case_id)
+        if case is None:
+            raise ValueError(f"未知的 B 验收测试: {case_id}")
+        command = [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            *case.test_paths,
+        ]
+        command_text = " ".join(command)
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=SOURCE,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            stdout = error.stdout or ""
+            stderr = error.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            return {
+                "case_id": case.case_id,
+                "returncode": -1,
+                "passed": False,
+                "command": command_text,
+                "stdout": stdout,
+                "stderr": stderr,
+                "conclusion": f"{case.title} 测试超时（120 秒）。",
+            }
+        except OSError as error:
+            return {
+                "case_id": case.case_id,
+                "returncode": -1,
+                "passed": False,
+                "command": command_text,
+                "stdout": "",
+                "stderr": f"{type(error).__name__}: {error}",
+                "conclusion": f"{case.title} 测试进程启动失败。",
+            }
+        return {
+            "case_id": case.case_id,
+            "returncode": completed.returncode,
+            "passed": completed.returncode == 0,
+            "command": command_text,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+            "conclusion": case.conclusion if completed.returncode == 0 else f"{case.title} 未通过，请查看测试输出。",
+        }
 
     def snapshot(self) -> dict:
         pool, disk = self.app.storage.buffer_pool, self.app.storage.disk
