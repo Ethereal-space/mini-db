@@ -28,28 +28,38 @@ CATALOG_SCHEMA = CATALOG_COLUMNS
 
 
 class PageCatalogRepository(CatalogRepositoryPort):
-    """仅通过 TableHeap 保存和恢复 ``TableMeta``，没有旁路文件。"""
+    """由 CatalogService 调用；通过 TableHeap 的 table_id=0 特殊表保存/恢复元数据，不走旁路文件。"""
 
     def __init__(self, storage: TableHeap) -> None:
+        """由整合层装配；校验并保存 TableHeap，后续所有 Catalog I/O 都复用它。"""
+
         if not isinstance(storage, TableHeap):
             raise ValueError("PageCatalogRepository 需要 TableHeap")
         self._storage = storage
 
     @property
     def storage(self) -> TableHeap:
+        """供装配与诊断读取底层 TableHeap；直接返回共享实例，不产生 I/O。"""
+
         return self._storage
 
     @property
     def first_page_id(self) -> int:
+        """供上层定位 Catalog 页链；返回 Superblock 约定的固定首页号。"""
+
         return CATALOG_FIRST_PAGE_ID
 
     @property
     def schema(self) -> tuple[ColumnMeta, ...]:
+        """供 Catalog 行编解码调用；返回冻结的六列系统表 schema。"""
+
         return CATALOG_COLUMNS
 
     catalog_schema = schema
 
     def save_table(self, table: TableMeta) -> None:
+        """由 CatalogService 注册表时调用；删除同 ID 旧行、逐列写新行，最后统一刷盘。"""
+
         if not isinstance(table, TableMeta):
             raise ValueError("table 必须是冻结 TableMeta")
         existing = list(self._storage.scan_raw(CATALOG_TABLE_ID, CATALOG_FIRST_PAGE_ID, CATALOG_COLUMNS))
@@ -73,6 +83,8 @@ class PageCatalogRepository(CatalogRepositoryPort):
         self._storage.flush_all()
 
     def load_tables(self) -> list[TableMeta]:
+        """由 CatalogService 启动恢复调用；扫描系统表、按 table_id 分组校验，再重建 TableMeta 列表。"""
+
         grouped: defaultdict[int, list[tuple[RID, tuple[int | str, ...]]]] = defaultdict(list)
         for row in self._storage.scan_raw(CATALOG_TABLE_ID, CATALOG_FIRST_PAGE_ID, CATALOG_COLUMNS):
             values = row.values
@@ -145,6 +157,8 @@ class PageCatalogRepository(CatalogRepositoryPort):
 
     @staticmethod
     def _format_row(rid: RID, message: str) -> StorageFormatError:
+        """供恢复校验失败分支调用；把 RID 和原因包装成统一 Catalog 损坏错误。"""
+
         return StorageFormatError(
             "CORRUPT_CATALOG",
             message,

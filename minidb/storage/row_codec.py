@@ -19,40 +19,50 @@ VARCHAR_LENGTH_STRUCT = struct.Struct("<H")
 
 
 class RowEncodeError(StorageError):
-    """输入值无法符合固定行格式。"""
+    """由 ``RowCodec.encode`` 抛出；表示上层值或 schema 无法转换为固定行格式。"""
 
 
 class RowTooLargeError(RowEncodeError):
-    """编码后的行无法放进单个 Slotted Page。"""
+    """由编码长度检查抛出；通知 TableHeap 当前行无法放入单个 Slotted Page。"""
 
 
 class RowDecodeError(StorageError):
-    """持久化行字节被截断、损坏或含额外内容。"""
+    """由 ``RowCodec.decode`` 抛出；把截断、坏 UTF-8 或尾字节报告给扫描调用方。"""
 
 
 def _columns(schema: Sequence[ColumnMeta] | TableMeta) -> tuple[ColumnMeta, ...]:
+    """供编解码入口统一 schema；TableMeta 取其 columns，序列则冻结为元组。"""
+
     if isinstance(schema, TableMeta):
         return schema.columns
     return tuple(schema)
 
 
 def _encode_error(code: str, message: str, **context: object) -> RowEncodeError:
+    """供编码分支集中构造无 SQL span 的结构化错误，并保留字段上下文。"""
+
     return RowEncodeError(code, message, span=None, context=context)
 
 
 def _too_large(message: str, **context: object) -> RowTooLargeError:
+    """供编码末尾调用；把超过单页上限的长度信息包装为专用错误。"""
+
     return RowTooLargeError("ROW_TOO_LARGE", message, span=None, context=context)
 
 
 def _decode_error(code: str, message: str, **context: object) -> RowDecodeError:
+    """供解码分支集中构造存储格式错误，使 TableHeap 能原样向上传递原因。"""
+
     return RowDecodeError(code, message, span=None, context=context)
 
 
 class RowCodec:
-    """按 schema 顺序编码和解码，不保存任何旁路元数据。"""
+    """由 TableHeap 调用的无状态行编解码器；按 schema 顺序处理 INT/VARCHAR，不保存旁路元数据。"""
 
     @staticmethod
     def encode(schema: Sequence[ColumnMeta] | TableMeta, values: Sequence[object]) -> bytes:
+        """由插入路径调用；校验列数/类型，逐列小端编码，拼接后检查单页行大小。"""
+
         columns = _columns(schema)
         if len(columns) != len(values):
             raise _encode_error(
@@ -140,6 +150,8 @@ class RowCodec:
         schema: Sequence[ColumnMeta] | TableMeta,
         payload: bytes | bytearray | memoryview,
     ) -> tuple[int | str, ...]:
+        """由扫描路径调用；按 schema 推进游标、严格解码每列，并拒绝截断和多余尾字节。"""
+
         columns = _columns(schema)
         raw = bytes(payload)
         if len(raw) > MAX_ROW_PAYLOAD:
@@ -232,6 +244,8 @@ class RowCodec:
 
     @staticmethod
     def encoded_size(schema: Sequence[ColumnMeta] | TableMeta, values: Sequence[object]) -> int:
+        """供插入前容量估算调用；复用真实编码流程并返回最终字节数。"""
+
         return len(RowCodec.encode(schema, values))
 
 

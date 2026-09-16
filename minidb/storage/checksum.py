@@ -15,10 +15,12 @@ from .constants import CHECKSUM_OFFSET, CHECKSUM_SIZE, PAGE_SIZE
 
 
 class ChecksumError(StorageError):
-    """页 CRC 与存储值不一致。"""
+    """由 ``verify_page`` 在页损坏时抛出；携带 CRC 差异和页号供 DiskManager 上报。"""
 
 
 def _validate_page(data: bytes | bytearray | memoryview) -> bytes:
+    """供 CRC 三个入口共用；把输入冻结为 bytes，并在计算前校验固定页长。"""
+
     raw = bytes(data)
     if len(raw) != PAGE_SIZE:
         raise ValueError(f"页数据必须恰好为 {PAGE_SIZE} 字节，实际为 {len(raw)}")
@@ -26,7 +28,7 @@ def _validate_page(data: bytes | bytearray | memoryview) -> bytes:
 
 
 def crc32(data: bytes | bytearray | memoryview) -> int:
-    """计算 v2 页 CRC32；输入的 checksum 区会按零处理。"""
+    """供封页和验页调用；校验页长、清零 checksum 区，再计算确定性的 CRC32。"""
 
     raw = bytearray(_validate_page(data))
     raw[CHECKSUM_OFFSET : CHECKSUM_OFFSET + CHECKSUM_SIZE] = bytes(CHECKSUM_SIZE)
@@ -34,7 +36,7 @@ def crc32(data: bytes | bytearray | memoryview) -> int:
 
 
 def seal_page(data: bytes | bytearray | memoryview) -> bytes:
-    """返回带 CRC 的完整 v2 页，不修改调用方缓冲区。"""
+    """由页写盘路径调用；复制整页、清零校验区、写入 CRC，返回不改原缓冲区的新 bytes。"""
 
     raw = bytearray(_validate_page(data))
     raw[CHECKSUM_OFFSET : CHECKSUM_OFFSET + CHECKSUM_SIZE] = bytes(CHECKSUM_SIZE)
@@ -47,7 +49,7 @@ def verify_page(
     *,
     page_id: int | None = None,
 ) -> int:
-    """验证页 CRC，成功返回实际 CRC，失败抛带页号上下文的 ChecksumError。"""
+    """由读页路径调用；读取存储 CRC、重算期望值并比较，失败时附页号抛 ``ChecksumError``。"""
 
     raw = _validate_page(data)
     actual = struct.unpack_from("<I", raw, CHECKSUM_OFFSET)[0]

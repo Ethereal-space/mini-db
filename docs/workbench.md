@@ -15,11 +15,29 @@ python -X utf8 -m minidb.integration.workbench_gui
 | SQL 工作台 | SQL 导入/保存，CREATE/INSERT/SELECT/DELETE，中文结果，CSV 导出，Catalog，逐语句 Trace，语法/语义错误 |
 | 前端分析 | Token 及位置、AST、可开关的 UPDATE/ORDER BY/LIMIT/DISTINCT 解析 |
 | 页与缓存 | LRU/FIFO 与容量，刷盘和重连，命中/缺失/淘汰/读写，dirty/pin，缓冲事件，真实页字节、空间分布、槽位与 tombstone |
+| Python 存储演示 | 可编辑并执行带注释的存储 Python 脚本，显示真实标准输出、页面/缓存检查和 PASS/FAIL |
 | 使用指南 | 推荐演示顺序、执行边界、持久化与文件位置 |
 
 “完整演示”和“1000 行跨页演示”每次创建独立数据库。已存在的工作库不被覆盖。新建拒绝覆盖已有路径。
 
 当前下载版仅有核心四种 SQL 的完整链路。UPDATE、ORDER BY/LIMIT、DISTINCT 仅提供前端解析展示。
+
+## 评分文档内置存储演示
+
+“Python 存储演示”页对应《大型平台软件设计实习评分-2026》“一、基本功能完成情况”
+中的存储系统部分。页面只提供三个脚本：页面分配/释放/恢复、LRU/FIFO 缓存机制、
+`get_page()`/`write_page()` 与数据库上层衔接。每段预设代码都带中文注释，标出验收目的、
+操作步骤和需要留在命名空间中的检查变量。
+
+左侧 Python 代码框可以编辑，并按 Python IDE 风格区分关键字、字符串、数字、注释、运算符
+和常用内置函数颜色。点击“解析并运行 Python”时，当前文本会在临时数据库中
+原样编译执行，调用真实页管理器、缓冲池和数据库接口，并捕获这段代码自己的 `print`
+标准输出。右侧显示真实运行输出、动态检查结果和 PASS/FAIL；结果不由界面预先填写。
+运行完成后临时数据库自动清理，不会修改当前工作库。代码语法/运行异常也会作为实际证据显示。
+
+模型层公开三个 `RUBRIC_CASES` 和 `WorkbenchSession.run_rubric_case(case_id, source=...)`，
+因此验收脚本也可以不启动 Tk 界面而直接复用同一组存储案例。每个返回值包含 `expected`、`actual`、
+`checks`、`passed` 和 `case_id`，便于把工作台结果粘贴到实验报告。
 
 ## 实现与错误语义
 

@@ -44,22 +44,28 @@ from .constants import (
 
 
 class StorageFormatError(StorageError):
-    """数据库文件的持久化格式不满足 MiniDB 引导约束。"""
+    """由引导页解码与文件校验抛出，表示磁盘格式不满足 MiniDB 约束。"""
 
     def __init__(self, code: str, message: str, context: dict[str, object] | None = None) -> None:
+        """由格式检查分支调用；固定 span=None，并把字段和偏移作为上下文。"""
+
         super().__init__(code, message, span=None, context=context)
 
 
 def _format_error(code: str, message: str, **context: object) -> StorageFormatError:
+    """供本模块格式检查统一创建 StorageFormatError；透传字段与偏移。"""
+
     return StorageFormatError(code, message, context)
 
 
 def _io_error(code: str, message: str, **context: object) -> StorageIOError:
+    """供文件系统异常分支统一创建 StorageIOError；补齐无 SQL span 的上下文。"""
+
     return StorageIOError(code, message, span=None, context=context)
 
 
 def _close_quietly(handle: object) -> None:
-    """在打开失败时尽力释放句柄；关闭失败不能覆盖原始格式错误。"""
+    """由打开失败清理路径调用；尽力关闭句柄且不覆盖原始格式错误。"""
 
     try:
         handle.close()  # type: ignore[union-attr]
@@ -68,18 +74,22 @@ def _close_quietly(handle: object) -> None:
 
 
 def _check_u32(value: int, field: str) -> None:
+    """由字段构造与页头编码调用；确认值可由无符号 32 位整数表示。"""
+
     if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= MAX_U32:
         raise ValueError(f"{field} 必须是 0..{MAX_U32} 的整数")
 
 
 def _check_i32(value: int, field: str) -> None:
+    """由字段构造调用；确认值可由有符号 32 位整数表示。"""
+
     if not isinstance(value, int) or isinstance(value, bool) or not -(1 << 31) <= value <= MAX_I32:
         raise ValueError(f"{field} 必须是有符号 32 位整数")
 
 
 @dataclass(frozen=True, slots=True)
 class Superblock:
-    """页 0 的逻辑字段；``magic`` 和页大小由项目格式固定。"""
+    """表示页 0 元数据；由 DatabaseFile 编解码，magic 和页大小由格式固定。"""
 
     version: int = FORMAT_VERSION
     page_size: int = PAGE_SIZE
@@ -89,6 +99,8 @@ class Superblock:
     next_table_id: int = INITIAL_NEXT_TABLE_ID
 
     def __post_init__(self) -> None:
+        """由 dataclass 构造后自动调用；逐字段检查其 struct 可表示范围。"""
+
         _check_u32(self.version, "version")
         _check_u32(self.page_size, "page_size")
         _check_u32(self.page_count, "page_count")
@@ -98,7 +110,7 @@ class Superblock:
 
     @classmethod
     def initial(cls, version: int = FORMAT_VERSION) -> Self:
-        """返回新库使用的固定初始元数据；v2 必须显式选择。"""
+        """供 DatabaseFile 初始化新库；校验版本后返回固定初始元数据。"""
 
         if version not in SUPPORTED_FORMAT_VERSIONS:
             raise ValueError(f"不支持的数据库格式版本：{version}")
@@ -106,10 +118,12 @@ class Superblock:
 
     @classmethod
     def initial_v2(cls) -> Self:
+        """供 v2 初始化入口使用；委托 initial 构造带校验和的初始元数据。"""
+
         return cls.initial(FORMAT_VERSION_V2)
 
     def encode(self) -> bytes:
-        """编码为完整的 4096 字节 Superblock 页。"""
+        """供新库创建和页 0 更新；打包固定字段、补零，v2 再封装 CRC。"""
 
         try:
             header = SUPERBLOCK_STRUCT.pack(
@@ -139,7 +153,7 @@ class Superblock:
         supported_versions: tuple[int, ...] | None = None,
         verify_checksum: bool = True,
     ) -> Self:
-        """从页 0 字节解码并校验字段；此方法绝不写入输入或文件。"""
+        """供 DatabaseFile 打开页 0；依次校验长度、字段、版本、CRC 和边界且不写文件。"""
 
         raw = bytes(data)
         if len(raw) < SUPERBLOCK_SIZE:
@@ -237,10 +251,12 @@ class Superblock:
     from_bytes = decode
 
     def to_bytes(self) -> bytes:
+        """提供序列化兼容接口；直接委托 encode 生成完整页。"""
+
         return self.encode()
 
     def describe_header(self) -> dict[str, dict[str, int | bytes]]:
-        """以可读结构返回字段偏移和值；该方法只读内存，不访问或修改文件。"""
+        """供演示和诊断返回字段偏移和值；只组装内存字典，不访问文件。"""
 
         return {
             "magic": {"offset": 0, "value": SUPERBLOCK_MAGIC},
@@ -253,7 +269,7 @@ class Superblock:
         }
 
     def validate_file_size(self, file_size: int) -> None:
-        """确认文件大小恰好由 page_count 决定。"""
+        """供打开和保存页 0 前检查完整性；比较实际长度与 page_count×PAGE_SIZE。"""
 
         expected = self.page_count * PAGE_SIZE
         if file_size != expected:
@@ -280,7 +296,7 @@ def encode_data_page_header(
     version: int = DATA_PAGE_VERSION,
     reserved: int = 0,
 ) -> bytes:
-    """编码一个数据页头；新库只用它创建空 Catalog page 1。"""
+    """供新库和 v2 空页创建固定数据页头；校验字段后按 struct 打包。"""
 
     if page_id < 1:
         raise ValueError("数据页 page_id 必须大于或等于 1")
@@ -321,6 +337,8 @@ def _validate_catalog_page(
     page_count: int | None = None,
     allow_versions: tuple[int, ...] | None = None,
 ) -> None:
+    """由 DatabaseFile 打开已有库时调用；校验 Catalog 页头、版本、CRC 和边界。"""
+
     if len(page) < DATA_PAGE_HEADER_SIZE:
         raise _format_error(
             "TRUNCATED_CATALOG_PAGE",
@@ -402,7 +420,8 @@ def _validate_catalog_page(
 class DatabaseFile:
     """可重启打开的 MiniDB 单文件。
 
-    对象持有一个 ``r+b`` 文件句柄。构造新文件只发生在路径不存在或文件
+    DiskManager 在其上完成页分配和空闲链管理。对象持有一个 ``r+b``
+    文件句柄。构造新文件只发生在路径不存在或文件
     长度为 0 时；任何非空文件先完整校验，校验失败不会写入或截断文件。
     """
 
@@ -412,6 +431,8 @@ class DatabaseFile:
     _closed: bool
 
     def __init__(self, path: Path, handle: object, superblock: Superblock) -> None:
+        """仅由 _open 成功路径调用；保存已打开句柄和已验证的页 0 状态。"""
+
         self._path = path
         self._handle = handle
         self._superblock = superblock
@@ -425,7 +446,7 @@ class DatabaseFile:
         format_version: int | None = None,
         version: int | None = None,
     ) -> Self:
-        """打开数据库；v2 必须显式传 ``format_version=2``。"""
+        """供普通启动调用；校验请求版本后转入内部新建或校验流程。"""
 
         requested = format_version if format_version is not None else version
         if requested not in (None, FORMAT_VERSION, FORMAT_VERSION_V2):
@@ -434,13 +455,13 @@ class DatabaseFile:
 
     @classmethod
     def open_v2(cls, path: str | os.PathLike[str]) -> Self:
-        """显式打开或初始化带 CRC32 的 v2 数据库。"""
+        """供 v2 实验启动；固定请求版本并转入 _open，不自动升级 v1。"""
 
         return cls._open(path, requested_version=FORMAT_VERSION_V2)
 
     @classmethod
     def _open(cls, path: str | os.PathLike[str], *, requested_version: int | None) -> Self:
-        """内部版本门控入口；不改变已有 v1 ``open`` 的严格行为。"""
+        """由 open 系列调用；新文件写两页，已有文件只读校验后返回句柄。"""
 
         database_path = Path(path)
         try:
@@ -519,7 +540,7 @@ class DatabaseFile:
         format_version: int | None = None,
         version: int | None = None,
     ) -> Self:
-        """显式初始化入口；语义与 ``open`` 相同，只接受新/空文件。"""
+        """供显式建库调用；拒绝非空路径后复用 open 完成两页初始化。"""
 
         database_path = Path(path)
         if database_path.exists() and database_path.stat().st_size != 0:
@@ -532,7 +553,7 @@ class DatabaseFile:
 
     @classmethod
     def initialize_v2(cls, path: str | os.PathLike[str]) -> Self:
-        """显式创建/打开 v2 数据库；非空 v1 文件不会被升级。"""
+        """供显式创建 v2 库；拒绝非空文件后复用 open_v2 写入 CRC 格式。"""
 
         database_path = Path(path)
         if database_path.exists() and database_path.stat().st_size != 0:
@@ -545,48 +566,54 @@ class DatabaseFile:
 
     @property
     def path(self) -> Path:
+        """供 DiskManager 与错误报告读取规范路径；返回初始化时保存的 Path。"""
+
         return self._path
 
     @property
     def superblock(self) -> Superblock:
-        """返回当前页 0 元数据；返回值是 frozen dataclass，调用方不能原地修改。"""
+        """供 DiskManager 读取页 0 元数据；返回 frozen 对象，调用方不能原地修改。"""
 
         return self._superblock
 
     @property
     def next_table_id(self) -> int:
-        """供 CatalogService 注入的只读表号下界。"""
+        """供最终装配注入 CatalogService；转发页 0 的只读表号下界。"""
 
         return self._superblock.next_table_id
 
     @property
     def page_count(self) -> int:
-        """当前文件中的页数；页号范围为 ``0 <= id < page_count``。"""
+        """供页号校验与分配读取总页数；合法范围为 ``0 <= id < page_count``。"""
 
         return self._superblock.page_count
 
     @property
     def page_version(self) -> int:
-        """文件页格式版本；v2 的最后四字节由 CRC32 占用。"""
+        """供页读写选择格式；v2 的最后四字节由 CRC32 占用。"""
 
         return self._superblock.version
 
     @property
     def format_version(self) -> int:
+        """提供 page_version 的兼容名称；供 DiskManager 配置读取。"""
+
         return self.page_version
 
     def describe_header(self) -> dict[str, dict[str, int | bytes]]:
-        """返回页 0 字段说明；调用不会移动文件游标或写入文件。"""
+        """供工作台演示页 0；检查开启后委托 Superblock 生成只读说明。"""
 
         self._check_open()
         return self._superblock.describe_header()
 
     @property
     def closed(self) -> bool:
+        """供 I/O 入口检查生命周期；返回内部关闭标记。"""
+
         return self._closed
 
     def read_page(self, page_id: int) -> bytes:
-        """读取一个完整页，供 C-B01 测试和后续磁盘层复用。"""
+        """供 DiskManager 读取整页；定位偏移、精确读取并为 v2 验证 CRC。"""
 
         self._check_open()
         self._check_page_id(page_id)
@@ -609,7 +636,8 @@ class DatabaseFile:
     def write_page(self, page_id: int, data: bytes | bytearray | memoryview) -> None:
         """覆盖一个已经存在的完整页。
 
-        页写入严格要求一个 ``PAGE_SIZE`` 页，且不允许借此改变文件长度。
+        BufferPool 和 DiskManager 调用。页写入严格要求一个 ``PAGE_SIZE`` 页，
+        且不允许借此改变文件长度。
         新页由 ``append_page`` 分配，避免页数元数据和物理文件长度暂时不一致。
         """
 
@@ -638,7 +666,7 @@ class DatabaseFile:
             ) from error
 
     def append_page(self, data: bytes | bytearray | memoryview) -> int:
-        """在文件末尾追加一个完整页并原子地推进 ``page_count``。"""
+        """供 DiskManager 分配文件尾页；写完整页、同步磁盘，再推进 page_count。"""
 
         self._check_open()
         raw = bytes(data)
@@ -686,7 +714,7 @@ class DatabaseFile:
         return page_id
 
     def save_superblock(self, superblock: Superblock) -> None:
-        """持久化新的页 0；不提供 next_table_id setter。"""
+        """供 C-B01 和受限更新调用；拒绝改变页数后委托 persist_superblock。"""
 
         self._check_open()
         if superblock.page_count != self._superblock.page_count:
@@ -697,7 +725,8 @@ class DatabaseFile:
     def persist_superblock(self, superblock: Superblock) -> None:
         """保存页 0，允许调用方已经完成一致的文件扩展。
 
-        C-B01 的 ``save_superblock`` 保留严格的同页数约束；页分配器使用
+        DiskManager 页分配与表号更新调用。C-B01 的 ``save_superblock``
+        保留严格的同页数约束；页分配器使用
         本方法在追加页后同时更新持久化的 ``page_count``。
         """
 
@@ -732,7 +761,7 @@ class DatabaseFile:
         self._superblock = superblock
 
     def _rollback_append(self, old_size: int) -> None:
-        """追加元数据失败时尽量恢复旧文件长度，不覆盖原始异常。"""
+        """由 append_page 失败补偿调用；尽力截回旧长度且不覆盖原始异常。"""
 
         try:
             self._handle.truncate(old_size)  # type: ignore[union-attr]
@@ -743,7 +772,7 @@ class DatabaseFile:
 
     @staticmethod
     def _normalize_v2_page(raw: bytes, *, page_id: int) -> bytes:
-        """拒绝 v1/未知页混入 v2 文件；全零输入转成合法空数据页。"""
+        """由 v2 页写入路径调用；全零页补合法页头，并拒绝混入其他版本。"""
 
         if raw[:DATA_PAGE_HEADER_SIZE] == bytes(DATA_PAGE_HEADER_SIZE):
             return encode_data_page_header(page_id=page_id, version=DATA_PAGE_VERSION_V2) + bytes(
@@ -761,13 +790,15 @@ class DatabaseFile:
         return raw
 
     def update_superblock(self, **changes: int) -> Superblock:
-        """以不可变替换方式保存页 0，方便测试和后续存储层调用。"""
+        """供测试和简单元数据更新；replace 构造新对象，经 save_superblock 持久化。"""
 
         updated = replace(self._superblock, **changes)
         self.save_superblock(updated)
         return updated
 
     def flush(self) -> None:
+        """供 DiskManager 和显式同步调用；刷新 Python 缓冲并执行 fsync。"""
+
         self._check_open()
         try:
             self._handle.flush()  # type: ignore[union-attr]
@@ -776,6 +807,8 @@ class DatabaseFile:
             raise _io_error("FLUSH_FAILED", f"刷新数据库文件失败：{error}") from error
 
     def close(self) -> None:
+        """供上下文退出或所有者调用；幂等刷新、fsync、关闭句柄并标记状态。"""
+
         if self._closed:
             return
         try:
@@ -788,17 +821,25 @@ class DatabaseFile:
         self._closed = True
 
     def __enter__(self) -> Self:
+        """支持 ``with DatabaseFile``；检查未关闭后返回自身。"""
+
         self._check_open()
         return self
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        """由上下文管理器调用；退出时统一关闭数据库文件。"""
+
         self.close()
 
     def _check_open(self) -> None:
+        """由所有文件操作入口调用；关闭后抛出带路径的 I/O 错误。"""
+
         if self._closed:
             raise _io_error("CLOSED_DATABASE", "数据库文件已经关闭", path=str(self._path))
 
     def _check_page_id(self, page_id: int) -> None:
+        """由页读写调用；校验整数类型和当前 superblock 页数范围。"""
+
         if not isinstance(page_id, int) or isinstance(page_id, bool):
             raise ValueError("page_id 必须是整数")
         if not 0 <= page_id < self._superblock.page_count:
@@ -811,6 +852,8 @@ class DatabaseFile:
 
 
 def _read_exact(handle: object, length: int, *, page_id: int) -> bytes:
+    """由打开和读页路径调用；读取固定长度，短读时报告页号与物理偏移。"""
+
     try:
         data = handle.read(length)  # type: ignore[union-attr]
     except OSError:
@@ -828,25 +871,25 @@ def _read_exact(handle: object, length: int, *, page_id: int) -> bytes:
 
 
 def open_database(path: str | os.PathLike[str]) -> DatabaseFile:
-    """函数式打开入口，便于整合层注入。"""
+    """供整合层函数式打开 v1 数据库；直接委托 DatabaseFile.open。"""
 
     return DatabaseFile.open(path)
 
 
 def open_database_v2(path: str | os.PathLike[str]) -> DatabaseFile:
-    """显式打开带 CRC32 的 v2 文件；不会升级已有 v1 文件。"""
+    """供整合层函数式打开 v2 文件；委托 open_v2 且不会升级 v1。"""
 
     return DatabaseFile.open_v2(path)
 
 
 def initialize_database(path: str | os.PathLike[str]) -> DatabaseFile:
-    """函数式显式初始化入口。"""
+    """供整合层显式初始化 v1 文件；委托 DatabaseFile.initialize。"""
 
     return DatabaseFile.initialize(path)
 
 
 def initialize_database_v2(path: str | os.PathLike[str]) -> DatabaseFile:
-    """显式初始化带 CRC32 的 v2 文件。"""
+    """供整合层显式初始化 v2 文件；委托 DatabaseFile.initialize_v2。"""
 
     return DatabaseFile.initialize_v2(path)
 

@@ -4,15 +4,24 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import csv
+import io
 import json
+import keyword
 from pathlib import Path
 import queue
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
+import tokenize
 import traceback
 
 from minidb.contracts import MiniDBError
-from .workbench_model import B_ACCEPTANCE_CASES, EXAMPLES, SOURCE, WorkbenchSession, analyze
+from .workbench_model import (
+    EXAMPLES,
+    RUBRIC_CASES,
+    SOURCE,
+    WorkbenchSession,
+    analyze,
+)
 
 
 BG, NAVY, INK, MUTED, BLUE = "#eef2f7", "#13243c", "#1d304c", "#64748b", "#2563eb"
@@ -22,17 +31,114 @@ def pretty(value):
     return json.dumps(value, ensure_ascii=False, indent=2, default=str)
 
 
-def set_text(widget, value):
+def set_text(widget, value, *, readonly=True):
+    """Replace a text widget's contents and choose its final edit state.
+
+    Most workbench panes are evidence panes and remain read-only.  The
+    storage rubric source pane is deliberately left editable so the code
+    visible to the user is the code that will be executed by the next run.
+    """
+
     widget.configure(state="normal")
     widget.delete("1.0", "end")
     widget.insert("1.0", value)
-    widget.configure(state="disabled")
+    widget.configure(state="disabled" if readonly else "normal")
 
 
 def text_box(parent, **options):
     return scrolledtext.ScrolledText(parent, font=("Consolas", 10), wrap="word",
                                     relief="flat", padx=12, pady=10,
                                     background="white", foreground=INK, **options)
+
+
+PYTHON_TAGS = {
+    "py_comment": {"foreground": "#6a737d"},
+    "py_keyword": {"foreground": "#7c3aed", "font": ("Consolas", 10, "bold")},
+    "py_string": {"foreground": "#a31515"},
+    "py_number": {"foreground": "#098658"},
+    "py_builtin": {"foreground": "#005cc5"},
+    "py_operator": {"foreground": "#b45309"},
+}
+
+
+PYTHON_BUILTINS = frozenset({
+    "print", "len", "bytes", "str", "int", "tuple", "list", "dict", "set",
+    "range", "enumerate", "open", "Path", "True", "False", "None",
+})
+
+# Python 3.14 tokenizes f-strings into three token kinds.  Include them in
+# the string color while keeping compatibility with interpreters without
+# the newer constants.
+PYTHON_STRING_TOKEN_TYPES = frozenset({
+    token_type
+    for token_type in (
+        tokenize.STRING,
+        getattr(tokenize, "FSTRING_START", -1),
+        getattr(tokenize, "FSTRING_MIDDLE", -1),
+        getattr(tokenize, "FSTRING_END", -1),
+    )
+    if token_type >= 0
+})
+
+
+def highlight_python(widget):
+    """Apply small Python-IDE style syntax colors to a Tk Text widget.
+
+    The standard-library tokenizer supplies token spans, so colors follow
+    Python syntax rather than brittle substring replacement.  Invalid or
+    unfinished code is left partially colored and remains fully editable.
+    """
+
+    for tag, options in PYTHON_TAGS.items():
+        widget.tag_configure(tag, **options)
+        widget.tag_remove(tag, "1.0", "end")
+    source = widget.get("1.0", "end-1c")
+    if not source:
+        widget.edit_modified(False)
+        return
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+        for token in tokens:
+            tag = None
+            if token.type == tokenize.COMMENT:
+                tag = "py_comment"
+            elif token.type in PYTHON_STRING_TOKEN_TYPES:
+                tag = "py_string"
+            elif token.type == tokenize.NUMBER:
+                tag = "py_number"
+            elif token.type == tokenize.NAME:
+                if keyword.iskeyword(token.string):
+                    tag = "py_keyword"
+                elif token.string in PYTHON_BUILTINS:
+                    tag = "py_builtin"
+            elif token.type == tokenize.OP:
+                tag = "py_operator"
+            if tag is not None:
+                start = f"{token.start[0]}.{token.start[1]}"
+                end = f"{token.end[0]}.{token.end[1]}"
+                widget.tag_add(tag, start, end)
+    except (tokenize.TokenError, IndentationError):
+        # While a user is typing a multiline string or an indented block,
+        # tokenize may not yet have a complete program.  Keep the editor
+        # usable; the run action will report the real compile error.
+        return
+    finally:
+        widget.edit_modified(False)
+
+
+def bind_python_highlighting(widget):
+    """Install live highlighting without moving the user's caret."""
+
+    for tag, options in PYTHON_TAGS.items():
+        widget.tag_configure(tag, **options)
+
+    def on_modified(event=None):
+        if widget.edit_modified():
+            highlight_python(widget)
+
+    widget.bind("<<Modified>>", on_modified, add="+")
+    widget.edit_modified(False)
+    highlight_python(widget)
 
 
 def table(parent, columns, height=10):
@@ -106,13 +212,13 @@ class Workbench:
         self.sql_tab = self.tab("01  SQL 工作台")
         self.front_tab = self.tab("02  前端分析")
         self.store_tab = self.tab("03  页与缓存")
-        self.help_tab = self.tab("04  使用指南")
-        self.acceptance_tab = self.tab("05  B 编译器验收")
+        self.rubric_tab = self.tab("04  Python 存储演示")
+        self.help_tab = self.tab("05  使用指南")
         self.build_sql()
         self.build_frontend()
         self.build_storage()
+        self.build_rubric()
         self.build_help()
-        self.build_acceptance()
         self.refresh(session.snapshot())
         self.load_example()
         root.bind("<F5>", lambda event: self.execute())
@@ -269,6 +375,132 @@ class Workbench:
         self.hex_text = text_box(right, height=9)
         self.hex_text.pack(fill="both", expand=True, pady=8)
 
+    def build_rubric(self):
+        """Build the scoring-document acceptance page.
+
+        The page intentionally separates the immutable expected contract from
+        the actual evidence returned by ``WorkbenchSession.run_rubric_case``.
+        A reviewer can therefore select a storage scoring item, edit the
+        Python operation recipe, run it, and inspect every assertion without
+        changing the current workbench database.
+        """
+
+        controls = ttk.Frame(self.rubric_tab)
+        controls.pack(fill="x", pady=(0, 8))
+        ttk.Label(controls, text="预设存储脚本").pack(side="left")
+        self.rubric_case = ttk.Combobox(controls, state="readonly", width=58)
+        self.rubric_case.pack(side="left", padx=7)
+        self.rubric_case.bind("<<ComboboxSelected>>", self.show_rubric_case)
+        ttk.Button(controls, text="恢复预设代码", command=self.show_rubric_case).pack(side="left", padx=4)
+        ttk.Button(controls, text="解析并运行 Python", style="Accent.TButton", command=self.run_rubric_case).pack(side="left", padx=4)
+        self.rubric_status_var = tk.StringVar(value="请选择用例并运行")
+        self.rubric_status_label = ttk.Label(controls, textvariable=self.rubric_status_var, foreground=MUTED)
+        self.rubric_status_label.pack(side="right", padx=5)
+
+        self.rubric_meta = ttk.Label(self.rubric_tab, text="", foreground=MUTED, wraplength=1250)
+        self.rubric_meta.pack(fill="x", anchor="w", pady=(0, 8))
+        panes = ttk.Panedwindow(self.rubric_tab, orient="horizontal")
+        panes.pack(fill="both", expand=True, pady=(0, 8))
+        left, right = ttk.Frame(panes), ttk.Frame(panes)
+        panes.add(left, weight=1)
+        panes.add(right, weight=1)
+        self.rubric_source_label = ttk.Label(left, text="Python 存储验收代码（可编辑）", font=("Microsoft YaHei UI", 10, "bold"))
+        self.rubric_source_label.pack(anchor="w", pady=5)
+        self.rubric_source = text_box(left, height=13)
+        self.rubric_source.pack(fill="both", expand=True)
+        bind_python_highlighting(self.rubric_source)
+        ttk.Label(right, text="预期结果（评分依据）", font=("Microsoft YaHei UI", 10, "bold")).pack(anchor="w", pady=5)
+        self.rubric_expected = text_box(right, height=8)
+        self.rubric_expected.pack(fill="both", expand=True)
+        ttk.Label(right, text="实际结果与证据", font=("Microsoft YaHei UI", 10, "bold")).pack(anchor="w", pady=(9, 5))
+        self.rubric_actual = text_box(right, height=8)
+        self.rubric_actual.pack(fill="both", expand=True)
+
+        ttk.Label(self.rubric_tab, text="存储检查结果", font=("Microsoft YaHei UI", 10, "bold")).pack(anchor="w", pady=4)
+        self.rubric_effect = table(self.rubric_tab, ["结果"], height=4)
+        ttk.Label(self.rubric_tab, text="逐项断言", font=("Microsoft YaHei UI", 10, "bold")).pack(anchor="w", pady=4)
+        self.rubric_checks = table(self.rubric_tab, ["状态", "验收项", "实际证据"], height=6)
+        self._rubric_case_ids: list[str] = []
+        self.update_rubric_cases()
+
+    def _selected_rubric_case(self):
+        index = self.rubric_case.current()
+        if index < 0 or index >= len(self._rubric_case_ids):
+            return None
+        case_id = self._rubric_case_ids[index]
+        return next(case for case in RUBRIC_CASES if case.case_id == case_id)
+
+    def update_rubric_cases(self, event=None):
+        """Load the three storage recipes into the single Python selector."""
+
+        cases = list(RUBRIC_CASES)
+        self._rubric_case_ids = [case.case_id for case in cases]
+        self.rubric_case.configure(values=[f"{case.case_id}  ·  {case.title}" for case in cases])
+        if cases:
+            self.rubric_case.current(0)
+            self.show_rubric_case()
+
+    def show_rubric_case(self, event=None):
+        case = self._selected_rubric_case()
+        if case is None:
+            return
+        self.rubric_meta.configure(text=f"{case.case_id}  ·  {case.rubric}  ·  {case.purpose}")
+        # Selecting a case restores its commented Python recipe.  The widget
+        # remains editable after this call, and the next run reads it back.
+        set_text(self.rubric_source, case.source, readonly=False)
+        highlight_python(self.rubric_source)
+        self.rubric_source_label.configure(text="Python 存储验收代码（可编辑，运行当前内容）")
+        set_text(self.rubric_expected, case.expected)
+        set_text(self.rubric_actual, "尚未运行。点击“运行用例”后，这里会显示真实执行证据。")
+        self.rubric_effect.configure(columns=("c0",))
+        self.rubric_effect.heading("c0", text="结果")
+        self.rubric_effect.column("c0", width=520)
+        fill(self.rubric_effect, [])
+        fill(self.rubric_checks, [])
+        self.rubric_status_var.set("尚未运行")
+        self.rubric_status_label.configure(foreground=MUTED)
+
+    def run_rubric_case(self):
+        case = self._selected_rubric_case()
+        if case is None:
+            return
+        source = self.rubric_source.get("1.0", "end-1c")
+        if not source.strip():
+            self.rubric_status_var.set("Python 代码为空，请先编辑左侧代码")
+            return
+        self.submit(
+            f"解析并运行存储 Python {case.case_id}…",
+            lambda: self.session.run_rubric_case(case.case_id, source=source),
+            self.show_rubric_result,
+        )
+
+    def show_rubric_result(self, result):
+        self.tabs.select(self.rubric_tab)
+        state = "PASS" if result["passed"] else "FAIL"
+        color = "#16704a" if result["passed"] else "#b91c1c"
+        self.rubric_status_var.set(f"{state} · {result['case_id']}")
+        self.rubric_status_label.configure(foreground=color)
+        set_text(self.rubric_expected, result["expected"])
+        set_text(self.rubric_actual, result["actual"])
+        effect = result.get("effect") or {}
+        columns = tuple(effect.get("columns") or ())
+        rows = tuple(effect.get("rows") or ())
+        if not columns:
+            columns = ("消息", "影响行数")
+            rows = ((effect.get("message") or "无结构化结果", effect.get("affected_rows", 0)),)
+        ids = [f"r{i}" for i in range(len(columns))]
+        self.rubric_effect.configure(columns=ids)
+        for column_id, label in zip(ids, columns):
+            self.rubric_effect.heading(column_id, text=str(label))
+            self.rubric_effect.column(column_id, width=max(110, min(260, 720 // len(ids))))
+        fill(self.rubric_effect, rows)
+        fill(
+            self.rubric_checks,
+            [["PASS" if item["passed"] else "FAIL", item["name"], item["evidence"].replace("\n", " ")]
+             for item in result["checks"]],
+        )
+        self.status.set(f"评分用例 {result['case_id']}：{state}；当前数据库未被用例修改。")
+
     def build_help(self):
         help_text = text_box(self.help_tab)
         help_text.pack(fill="both", expand=True)
@@ -290,89 +522,25 @@ F5 或 Ctrl+Enter 执行编辑器中的完整脚本。SELECT 的结果展示在�
 这些扩展尚未在本下载版的核心执行链注册，不能使用“执行 SQL”将它们当成已支持的数据库操作。
 “前端分析”开关可以验证同一 SQL 在开启或关闭扩展时的差别。示例 06/07 用于语法及语义错误定位。
 
-04  存储与持久化
+03  存储与持久化
 页与缓存页显示实时命中、缺失、淘汰、读写统计以及缓冲帧的 dirty/pin 状态。
 读取页号可以检查真实的 4096 字节内容、槽目录、删除标记和可用空间；优先显示缓存中的最新页。
 “刷盘”将脏页写入磁盘。“重连”关闭并重新打开数据库，再次 SELECT 可以验证数据恢复。
 更改 LRU/FIFO 与容量后点击“应用并重连”；统计随新会话重新计数。观察快照本身不触碰缓存置换顺序。
 
-        05  文件与退出
+04  Python 存储演示
+“Python 存储演示”页只保留评分文档中存储系统的三类基本功能：页面管理、缓存机制、
+接口与上层衔接。每个预设脚本都带有中文注释，说明它对应的页分配/释放、4096 字节
+读写、LRU/FIFO、缓存事件和数据库接口检查。左侧代码框可以直接编辑，关键字、字符串、
+数字、注释和运算符会以不同颜色显示；点击“解析并运行
+Python”会在临时数据库中编译并执行当前源码，右侧显示源码自己的 print 标准输出、动态
+检查结果和 PASS/FAIL。结果不会预先写死，也不会修改当前工作库；代码异常会显示实际异常。
+
+05  文件与退出
 默认工作库在仓库目录 data/workbench.db。打开数据库按钮只选择现有文件，新建按钮拒绝覆盖已有文件。
 关闭界面会刷盘并关闭连接。任务运行期间请等待完成后退出。
 运行入口：仓库根目录 run_gui.py。原来的纯前端演示保留在 run_frontend_gui.py。
 """)
-
-    def build_acceptance(self):
-        tools = ttk.Frame(self.acceptance_tab)
-        tools.pack(fill="x", pady=(0, 10))
-        ttk.Label(tools, text="选择评分项：", font=("Microsoft YaHei UI", 10, "bold")).pack(side="left")
-        self.acceptance_keys = tuple(B_ACCEPTANCE_CASES)
-        self.acceptance_selector = ttk.Combobox(
-            tools,
-            values=tuple(B_ACCEPTANCE_CASES[key].title for key in self.acceptance_keys),
-            state="readonly",
-            width=24,
-        )
-        self.acceptance_selector.current(0)
-        self.acceptance_selector.pack(side="left", padx=(6, 0))
-        self.acceptance_selector.bind("<<ComboboxSelected>>", self.acceptance_selected)
-        ttk.Label(tools, text="选择后自动运行对应的真实 pytest 测试。", foreground=MUTED).pack(side="left", padx=12)
-
-        body = ttk.Panedwindow(self.acceptance_tab, orient="horizontal")
-        body.pack(fill="both", expand=True)
-        code_frame, result_frame = ttk.Frame(body), ttk.Frame(body)
-        body.add(code_frame, weight=1)
-        body.add(result_frame, weight=1)
-        ttk.Label(code_frame, text="测试代码", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=6)
-        self.acceptance_code = text_box(code_frame, height=24)
-        self.acceptance_code.pack(fill="both", expand=True)
-        ttk.Label(result_frame, text="实时测试结果", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=6)
-        self.acceptance_result = text_box(result_frame, height=24)
-        self.acceptance_result.pack(fill="both", expand=True)
-        self._show_acceptance_code(B_ACCEPTANCE_CASES[self.acceptance_keys[0]])
-        set_text(self.acceptance_result, "请从上方选择评分项，系统将自动运行对应的真实 pytest 测试。")
-
-    def _show_acceptance_code(self, case):
-        code = (
-            f"评分项：{case.title}\n"
-            f"测试文件：{' '.join(case.test_paths)}\n"
-            f"测试命令：{case.command}\n\n"
-            f"代表性 SQL：\n{case.code}\n"
-        )
-        set_text(self.acceptance_code, code)
-
-    def acceptance_selected(self, event=None):
-        if self.busy:
-            self.status.set("正在执行验收测试，请等待当前测试完成。")
-            return
-        index = self.acceptance_selector.current()
-        if index < 0:
-            return
-        case = B_ACCEPTANCE_CASES[self.acceptance_keys[index]]
-        self._show_acceptance_code(case)
-        set_text(self.acceptance_result, "正在运行真实 pytest 测试，请稍候……")
-        self.submit(
-            f"正在运行 {case.title}…",
-            lambda: self.session.run_acceptance_case(case.case_id),
-            self.show_acceptance_result,
-        )
-
-    def show_acceptance_result(self, result):
-        status = "通过" if result["passed"] else "失败"
-        stdout = result["stdout"] or "（无标准输出）"
-        stderr = result["stderr"] or "（无标准错误）"
-        text = (
-            f"评分项：{B_ACCEPTANCE_CASES[result['case_id']].title}\n"
-            f"状态：{status}\n"
-            f"退出码：{result['returncode']}\n"
-            f"命令：{result['command']}\n\n"
-            f"标准输出：\n{stdout}\n\n"
-            f"标准错误：\n{stderr}\n\n"
-            f"结论：{result['conclusion']}\n"
-        )
-        set_text(self.acceptance_result, text)
-        self.tabs.select(self.acceptance_tab)
-        self.status.set(f"{B_ACCEPTANCE_CASES[result['case_id']].title}测试{status} · 已显示真实输出")
 
     def refresh(self, snapshot):
         self.snapshot = snapshot

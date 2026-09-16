@@ -2,7 +2,7 @@
 
 ## 本机可视化工作台
 
-在仓库根目录运行 `run_gui.py`，或使用 Python 3.14 执行 `python -X utf8 -m minidb.integration.workbench_gui`。工作台提供真实 SQL 执行、结果表格、完整 Trace、表结构、前端扩展分析、页与缓存观察。首次使用可点击“完整演示（新库）”。使用方法和功能边界见 [工作台说明](docs/workbench.md)。
+在仓库根目录运行 `run_gui.py`，或使用 Python 3.14 执行 `python -X utf8 -m minidb.integration.workbench_gui`。工作台提供真实 SQL 执行、结果表格、完整 Trace、表结构、前端扩展分析、页与缓存观察，以及按评分文档组织的内置验收用例。首次使用可点击“完整演示（新库）”。使用方法和功能边界见 [工作台说明](docs/workbench.md)。
 
 本仓库用于《大型平台软件设计实习》的 MiniDB 小组实验。系统以一条可追踪的数据流为主线：
 
@@ -74,6 +74,22 @@ SELECT * FROM student;
 ```
 
 验收同时检查 Token/AST/语义/原计划/优化计划 Trace、跨页数据、LRU 与 FIFO、dirty 写回、tombstone、Catalog 页式恢复以及程序重启后的数据恢复。详细边界与可重复断言均在任务卡中。
+
+### 评分文档内置演示
+
+工作台的“Python 存储演示”页按《大型平台软件设计实习评分-2026》第一部分的存储系统
+要求预置三个可重复案例：
+
+- **页面管理（4 分）**：页面分配、4096 字节读写、释放、重启后空闲页复用。
+- **缓存机制（4 分）**：容量为 2 的 A B A C 序列、LRU/FIFO 命中统计和淘汰事件。
+- **接口与集成（4 分）**：`get_page()`、`write_page()` 和数据库上层读取的真实衔接。
+
+选择案例后可以直接编辑左侧带中文注释的 Python 源码；编辑器会用 Python IDE 风格颜色区分
+关键字、字符串、数字、注释、运算符和常用内置函数。再点击“解析并运行 Python”，
+工作台把当前文本交给真实页管理器、缓冲池或数据库接口，在临时数据库中执行，并把这段
+源码自己的标准输出显示在右侧；检查结果从真实命名空间和真实页状态计算，不预先填写数值。
+模型层的 `WorkbenchSession.run_rubric_case(case_id, source=...)` 支持无界面传入编辑后源码，
+返回值包含 `expected`、`actual`、`raw_output`、`checks`、`passed` 和 `case_id`。
 
 当前基线已经包含集中装配入口。CLI 会把一个脚本先完整解析，再按语句执行
 `compile → optimize → execute`；成功的 CREATE 会立即对后续语句可见，发生

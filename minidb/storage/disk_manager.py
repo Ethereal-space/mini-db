@@ -34,15 +34,19 @@ FREE_PAGE_FORMAT: Final[str] = DATA_PAGE_STRUCT.format
 
 
 def _storage_error(code: str, message: str, **context: object) -> StorageError:
+    """供页分配与释放分支创建逻辑错误；统一附带无 SQL span 的上下文。"""
+
     return StorageError(code, message, span=None, context=context)
 
 
 def _io_error(code: str, message: str, **context: object) -> StorageIOError:
+    """供磁盘读写和关闭状态分支创建 I/O 错误；保留路径及偏移信息。"""
+
     return StorageIOError(code, message, span=None, context=context)
 
 
 class DiskManager:
-    """按 ``page_id * PAGE_SIZE`` 读写单个 MiniDB 文件。"""
+    """连接 BufferPool 与 DatabaseFile，按页读写并持久化空闲页链。"""
 
     def __init__(
         self,
@@ -53,6 +57,8 @@ class DiskManager:
         format_version: int | None = None,
         version: int | None = None,
     ) -> None:
+        """由存储装配层创建；接收或打开数据库，并从 superblock 恢复空闲链。"""
+
         if format_version is None:
             format_version = version
         if isinstance(database, DatabaseFile):
@@ -79,15 +85,21 @@ class DiskManager:
 
     @classmethod
     def open(cls, path: str | Path, **kwargs: object) -> "DiskManager":
+        """供普通启动流程打开数据库；把路径和选项转交构造器。"""
+
         return cls(path, **kwargs)
 
     @classmethod
     def open_v2(cls, path: str | Path, **kwargs: object) -> "DiskManager":
+        """供校验和格式实验打开数据库；固定 v2 格式后调用构造器。"""
+
         kwargs["format_version"] = FORMAT_VERSION_V2
         return cls(path, **kwargs)
 
     @classmethod
     def initialize_v2(cls, path: str | Path, **kwargs: object) -> "DiskManager":
+        """供显式创建 v2 数据库；先初始化 DatabaseFile，再取得其关闭所有权。"""
+
         from .superblock import DatabaseFile
 
         database = DatabaseFile.initialize_v2(path)
@@ -96,52 +108,78 @@ class DiskManager:
 
     @property
     def database(self) -> DatabaseFile:
+        """供底层维护和测试读取 DatabaseFile；不改变句柄所有权。"""
+
         return self._database
 
     @property
     def path(self) -> Path:
+        """供错误与诊断显示文件位置；转发 DatabaseFile.path。"""
+
         return self._database.path
 
     @property
     def page_count(self) -> int:
+        """供边界检查和分配读取总页数；转发 superblock 中的持久化值。"""
+
         return self._database.page_count
 
     @property
     def superblock(self):
+        """供存储装配读取只读元数据；返回当前 DatabaseFile superblock。"""
+
         return self._database.superblock
 
     @property
     def free_head(self) -> int:
+        """供诊断读取空闲链头；转发当前 superblock.free_head。"""
+
         return self._database.superblock.free_head
 
     @property
     def next_table_id(self) -> int:
+        """供最终装配注入 CatalogService；读取持久化表号分配下界。"""
+
         return self._database.next_table_id
 
     @property
     def page_version(self) -> int:
+        """供新页和 FREE 页编码选择版本；转发数据库页格式版本。"""
+
         return self._database.page_version
 
     @property
     def format_version(self) -> int:
+        """提供 page_version 的兼容名称；供配置和测试读取。"""
+
         return self.page_version
 
     @property
     def free_pages(self) -> frozenset[int]:
+        """供诊断读取已验证空闲页集合；返回不可变副本。"""
+
         return frozenset(self._free_pages)
 
     @property
     def free_list(self) -> tuple[int, ...]:
+        """供诊断按链序读取空闲页；委托 free_list_chain 重新验证链。"""
+
         return self.free_list_chain()
 
     @property
     def closed(self) -> bool:
+        """供每次 I/O 前检查状态；合并管理器与底层数据库关闭标记。"""
+
         return self._closed or self._database.closed
 
     def attach_cache_coordinator(self, coordinator: object | None) -> None:
+        """由 BufferPool 初始化调用；登记释放页前需检查和失效的缓存对象。"""
+
         self._cache_coordinator = coordinator
 
     def read_page(self, page_id: int) -> bytes:
+        """供 BufferPool 读取整页；检查状态与范围，再把短读转换为 I/O 错误。"""
+
         self._check_open()
         self._check_page_id(page_id)
         try:
@@ -159,6 +197,8 @@ class DiskManager:
     read = read_page
 
     def write_page(self, page_id: int, data: bytes | bytearray | memoryview) -> None:
+        """供 BufferPool 写回整页；校验状态、页号和固定长度后交给 DatabaseFile。"""
+
         self._check_open()
         self._check_page_id(page_id)
         raw = bytes(data)
@@ -169,7 +209,7 @@ class DiskManager:
     write = write_page
 
     def allocate_page(self) -> int:
-        """从空闲链头 LIFO 取页，否则在文件尾追加一个清零页。"""
+        """供 TableHeap 分配页；优先弹出空闲链头并持久化，否则在文件尾追加空页。"""
 
         self._check_open()
         head = self._database.superblock.free_head
@@ -213,7 +253,7 @@ class DiskManager:
         live: bool = False,
         linked: bool = False,
     ) -> None:
-        """将一个已脱离表链且没有存活记录的页放回持久化空闲链。"""
+        """供 TableHeap 回收空页；检查占用与链关系、失效缓存，再压入持久化空闲链。"""
 
         self._check_open()
         self._check_page_id(page_id)
@@ -275,7 +315,7 @@ class DiskManager:
     free = free_page
 
     def update_next_table_id(self, next_table_id: int) -> int:
-        """持久化表号分配下界；只允许前进，保留失败创建留下的空洞。"""
+        """供 Catalog 创建表前推进分配下界；只允许递增并重写 superblock。"""
 
         self._check_open()
         current = self._database.superblock.next_table_id
@@ -297,7 +337,7 @@ class DiskManager:
         return next_table_id
 
     def free_list_chain(self) -> tuple[int, ...]:
-        """只读返回空闲链，并在发现环或坏页时报告格式错误。"""
+        """供启动检查和诊断只读遍历空闲链；逐页解码并检测环与坏指针。"""
 
         chain: list[int] = []
         seen: set[int] = set()
@@ -315,12 +355,16 @@ class DiskManager:
         return tuple(chain)
 
     def flush(self) -> None:
+        """供 BufferPool.flush_all 调用；检查开启状态后刷新底层文件句柄。"""
+
         self._check_open()
         self._database.flush()
 
     flush_all = flush
 
     def close(self) -> None:
+        """供上下文退出或显式关闭；按所有权关闭 DatabaseFile 并保持幂等。"""
+
         if self._closed:
             return
         if self._owns_database:
@@ -328,13 +372,19 @@ class DiskManager:
         self._closed = True
 
     def __enter__(self) -> "DiskManager":
+        """支持 ``with DiskManager``；确认可用后返回自身。"""
+
         self._check_open()
         return self
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        """由上下文管理器调用；退出时统一执行 close。"""
+
         self.close()
 
     def _load_free_list(self) -> None:
+        """由构造器调用；从 free_head 逐页解码、验证边界并建立内存集合。"""
+
         page_id = self._database.superblock.free_head
         seen: set[int] = set()
         while page_id != INVALID_PAGE_ID:
@@ -355,6 +405,8 @@ class DiskManager:
             page_id = self._decode_free_page(self.read_page(page_id), expected_page_id=page_id)
 
     def _decode_free_page(self, raw: bytes, *, expected_page_id: int) -> int:
+        """由空闲链遍历调用；校验 FREE 页全部固定字段并返回后继页号。"""
+
         if len(raw) != PAGE_SIZE:
             raise StorageFormatError(
                 "TRUNCATED_FREE_PAGE",
@@ -415,6 +467,8 @@ class DiskManager:
 
     @staticmethod
     def _encode_free_page(page_id: int, next_page_id: int, *, version: int = DATA_PAGE_VERSION) -> bytes:
+        """由 free_page 调用；校验链指针、打包固定页头并按 v2 需要封装 CRC。"""
+
         if page_id <= CATALOG_PAGE_ID or page_id > MAX_I32:
             raise ValueError("可释放 page_id 必须大于 1 且适合有符号 32 位字段")
         if next_page_id != INVALID_PAGE_ID and next_page_id <= CATALOG_PAGE_ID:
@@ -440,7 +494,7 @@ class DiskManager:
         return raw
 
     def _blank_page(self, page_id: int) -> bytes:
-        """生成新分配页的可读空页；v2 页同时写入正确 CRC。"""
+        """由 allocate_page 调用生成可读空页；v1 清零，v2 写页头并封装 CRC。"""
 
         if self.page_version == FORMAT_VERSION_V2:
             from .checksum import seal_page
@@ -455,6 +509,8 @@ class DiskManager:
 
     @staticmethod
     def _looks_like_live_data_page(raw: bytes, page_id: int) -> bool:
+        """由 free_page 防误释放调用；宽容解包页头并判断是否声明有槽。"""
+
         if len(raw) < DATA_PAGE_STRUCT.size:
             return False
         try:
@@ -467,6 +523,8 @@ class DiskManager:
 
     @staticmethod
     def _looks_like_linked_data_page(raw: bytes, page_id: int) -> bool:
+        """由 free_page 防断链调用；宽容解包页头并判断后继指针是否存在。"""
+
         if len(raw) < DATA_PAGE_STRUCT.size:
             return False
         try:
@@ -479,6 +537,8 @@ class DiskManager:
 
     @staticmethod
     def _reject_coordinator_in_use(coordinator: object | None, page_id: int) -> None:
+        """由 free_page 调用；通过鸭子类型检查缓存 pin、存活和链接状态。"""
+
         if coordinator is None:
             return
         pin_count = None
@@ -520,6 +580,8 @@ class DiskManager:
 
     @staticmethod
     def _invalidate_coordinator(coordinator: object, page_id: int) -> None:
+        """由 free_page 写 FREE 页前调用；寻找兼容失效方法并丢弃缓存帧。"""
+
         for name in ("invalidate", "invalidate_page", "discard"):
             method = getattr(coordinator, name, None)
             if callable(method):
@@ -532,16 +594,22 @@ class DiskManager:
         )
 
     def _restore_page_after_failed_free(self, page_id: int, raw: bytes) -> None:
+        """由 free_page 异常补偿调用；尽力恢复原页且不掩盖首次存储错误。"""
+
         try:
             self._database.write_page(page_id, raw)
         except StorageError:
             return
 
     def _check_open(self) -> None:
+        """由所有 I/O 入口调用；文件已关闭时抛出带路径的错误。"""
+
         if self.closed:
             raise _io_error("CLOSED_DATABASE", "数据库文件已经关闭", path=str(self.path))
 
     def _check_page_id(self, page_id: int) -> None:
+        """由页读写和释放入口调用；校验整数类型及当前 page_count 范围。"""
+
         if not isinstance(page_id, int) or isinstance(page_id, bool):
             raise ValueError("page_id 必须是整数")
         if not 0 <= page_id < self.page_count:

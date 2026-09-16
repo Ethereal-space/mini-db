@@ -2,7 +2,7 @@ import pytest
 
 from minidb.contracts import StorageError
 
-from minidb.integration.workbench_model import B_ACCEPTANCE_CASES, WorkbenchSession, analyze
+from minidb.integration.workbench_model import RUBRIC_CASES, WorkbenchSession, analyze
 
 
 @pytest.fixture
@@ -89,20 +89,38 @@ def test_lexical_failure_replaces_previous_analysis():
     assert result["ast"] == []
 
 
-def test_b_acceptance_cases_are_stable():
-    assert tuple(B_ACCEPTANCE_CASES) == ("lexical", "syntax", "semantic", "plan")
-    assert all(case.title and case.code.strip() and case.command for case in B_ACCEPTANCE_CASES.values())
+def test_scoring_rubric_cases_have_passing_evidence(session):
+    """The built-in scoring page must exercise the real implementation."""
+
+    assert len(RUBRIC_CASES) == 3
+    assert all(case.source_type == "python" and "存储系统" in case.source for case in RUBRIC_CASES)
+    for case in RUBRIC_CASES:
+        outcome = session.run_rubric_case(case.case_id)
+        assert outcome["passed"], f"{case.case_id}: {outcome['actual']}"
+        assert outcome["case"]["rubric"] == case.rubric
+        assert all(item["passed"] for item in outcome["checks"])
 
 
-def test_run_acceptance_case_returns_real_pytest_output(tmp_path):
-    session = WorkbenchSession(tmp_path / "acceptance.db")
-    try:
-        result = session.run_acceptance_case("lexical")
-    finally:
-        session.close()
-    assert result["case_id"] == "lexical"
-    assert result["returncode"] == 0
-    assert result["passed"] is True
-    assert "passed" in result["stdout"]
-    assert result["command"]
-    assert result["conclusion"]
+def test_scoring_actual_output_is_python_stdout(session):
+    storage = session.run_rubric_case("STORAGE-BUFFER-01")
+    assert "access policy=lru" in storage["raw_output"]
+    assert "policy=fifo stats=" in storage["raw_output"]
+
+
+def test_storage_rubric_executes_current_python_source(session):
+    case = next(item for item in RUBRIC_CASES if item.case_id == "STORAGE-PAGE-01")
+    edited = case.source + "\nprint('EDITED_STORAGE_SOURCE_MARKER')\n"
+    outcome = session.run_rubric_case(case.case_id, source=edited)
+    assert outcome["source"] == edited
+    assert "EDITED_STORAGE_SOURCE_MARKER" in outcome["raw_output"]
+    assert outcome["passed"]
+
+
+def test_storage_rubric_shows_python_output_when_recipe_is_incomplete(session):
+    outcome = session.run_rubric_case(
+        "STORAGE-PAGE-01",
+        source="print('custom page probe')",
+    )
+    assert not outcome["passed"]
+    assert "custom page probe" in outcome["raw_output"]
+    assert "缺少验收变量" in outcome["raw_output"]
