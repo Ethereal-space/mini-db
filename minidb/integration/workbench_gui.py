@@ -16,6 +16,7 @@ import traceback
 
 from minidb.contracts import MiniDBError
 from .workbench_model import (
+    B_ACCEPTANCE_CASES,
     EXAMPLES,
     RUBRIC_CASES,
     SOURCE,
@@ -211,14 +212,12 @@ class Workbench:
         self.tabs.pack(fill="both", expand=True, padx=16, pady=(0, 8))
         self.sql_tab = self.tab("01  SQL 工作台")
         self.front_tab = self.tab("02  前端分析")
-        self.store_tab = self.tab("03  页与缓存")
-        self.rubric_tab = self.tab("04  Python 存储演示")
-        self.help_tab = self.tab("05  使用指南")
+        self.rubric_tab = self.tab("03  Python 存储演示")
         self.build_sql()
         self.build_frontend()
-        self.build_storage()
         self.build_rubric()
-        self.build_help()
+        self.acceptance_tab = self.tab("04  B 编译器验收")
+        self.build_acceptance()
         self.refresh(session.snapshot())
         self.load_example()
         root.bind("<F5>", lambda event: self.execute())
@@ -501,69 +500,69 @@ class Workbench:
         )
         self.status.set(f"评分用例 {result['case_id']}：{state}；当前数据库未被用例修改。")
 
-    def build_help(self):
-        help_text = text_box(self.help_tab)
-        help_text.pack(fill="both", expand=True)
-        set_text(help_text, """MiniDB Studio 使用指南
+    def build_acceptance(self):
+        controls = ttk.Frame(self.acceptance_tab)
+        controls.pack(fill="x", pady=(0, 10))
+        ttk.Label(controls, text="选择 B 评分项：", font=("Microsoft YaHei UI", 10, "bold")).pack(side="left")
+        self.acceptance_keys = tuple(B_ACCEPTANCE_CASES)
+        self.acceptance_selector = ttk.Combobox(
+            controls,
+            values=tuple(B_ACCEPTANCE_CASES[key].title for key in self.acceptance_keys),
+            state="readonly",
+            width=24,
+        )
+        self.acceptance_selector.current(0)
+        self.acceptance_selector.pack(side="left", padx=7)
+        self.acceptance_selector.bind("<<ComboboxSelected>>", self.acceptance_selected)
+        ttk.Label(controls, text="选择后运行真实 pytest，并显示生产代码现场数据。", foreground=MUTED).pack(side="left")
+        panes = ttk.Panedwindow(self.acceptance_tab, orient="horizontal")
+        panes.pack(fill="both", expand=True)
+        left, right = ttk.Frame(panes), ttk.Frame(panes)
+        panes.add(left, weight=1)
+        panes.add(right, weight=1)
+        ttk.Label(left, text="实际测试代码", font=("Microsoft YaHei UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_code = text_box(left, height=28)
+        self.acceptance_code.pack(fill="both", expand=True)
+        ttk.Label(right, text="预期结果与实际结果", font=("Microsoft YaHei UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_result = text_box(right, height=28)
+        self.acceptance_result.pack(fill="both", expand=True)
+        self._show_acceptance_code(B_ACCEPTANCE_CASES[self.acceptance_keys[0]])
+        set_text(self.acceptance_result, "请选择评分项，系统将运行真实测试并输出实际数据。")
 
-01  从一个完整演示开始
-在 SQL 工作台点击“完整演示（新库）”，程序创建独立数据库并执行真实的建表、插入与查询。
-从结果下拉框选择任意语句，再点击右侧 TOKEN、AST、SEMANTIC、BOUND、PLAN、OPTIMIZATION、OPTIMIZED_PLAN、EXECUTION 阶段，查看真实输出。
-“1000 行跨页演示”可以观察多个数据页和缓存淘汰。每次演示使用新文件，之前的数据保留。
+    def _show_acceptance_code(self, case):
+        set_text(self.acceptance_code, case.test_source)
 
-02  逐步学习 SQL
-示例 01–05 按顺序展示建表、中文插入、布尔条件、优化和删除。建表只能在同名表不存在时执行。
-F5 或 Ctrl+Enter 执行编辑器中的完整脚本。SELECT 的结果展示在表格中；可导出当前语句的全部结果为 CSV。
-双击左侧表名载入 SELECT。表下方显示字段和类型。
-语法错误在任何执行前报错；后续语句的语义或执行错误可能保留前面已成功的语句，系统没有事务回滚。
+    def acceptance_selected(self, event=None):
+        if self.busy:
+            self.status.set("正在执行验收测试，请等待当前测试完成。")
+            return
+        index = self.acceptance_selector.current()
+        if index < 0:
+            return
+        case = B_ACCEPTANCE_CASES[self.acceptance_keys[index]]
+        self._show_acceptance_code(case)
+        set_text(self.acceptance_result, "正在运行真实测试，请稍候……")
+        self.submit(f"正在运行 {case.title}…", lambda: self.session.run_acceptance_case(case.case_id), self.show_acceptance_result)
 
-03  前端扩展与错误
-示例 08–10 配合“仅分析”展示 UPDATE、ORDER BY/LIMIT、DISTINCT 的 Token 和 AST。
-这些扩展尚未在本下载版的核心执行链注册，不能使用“执行 SQL”将它们当成已支持的数据库操作。
-“前端分析”开关可以验证同一 SQL 在开启或关闭扩展时的差别。示例 06/07 用于语法及语义错误定位。
-
-03  存储与持久化
-页与缓存页显示实时命中、缺失、淘汰、读写统计以及缓冲帧的 dirty/pin 状态。
-读取页号可以检查真实的 4096 字节内容、槽目录、删除标记和可用空间；优先显示缓存中的最新页。
-“刷盘”将脏页写入磁盘。“重连”关闭并重新打开数据库，再次 SELECT 可以验证数据恢复。
-更改 LRU/FIFO 与容量后点击“应用并重连”；统计随新会话重新计数。观察快照本身不触碰缓存置换顺序。
-
-04  Python 存储演示
-“Python 存储演示”页只保留评分文档中存储系统的三类基本功能：页面管理、缓存机制、
-接口与上层衔接。每个预设脚本都带有中文注释，说明它对应的页分配/释放、4096 字节
-读写、LRU/FIFO、缓存事件和数据库接口检查。左侧代码框可以直接编辑，关键字、字符串、
-数字、注释和运算符会以不同颜色显示；点击“解析并运行
-Python”会在临时数据库中编译并执行当前源码，右侧显示源码自己的 print 标准输出、动态
-检查结果和 PASS/FAIL。结果不会预先写死，也不会修改当前工作库；代码异常会显示实际异常。
-
-05  文件与退出
-默认工作库在仓库目录 data/workbench.db。打开数据库按钮只选择现有文件，新建按钮拒绝覆盖已有文件。
-关闭界面会刷盘并关闭连接。任务运行期间请等待完成后退出。
-运行入口：仓库根目录 run_gui.py。原来的纯前端演示保留在 run_frontend_gui.py。
-""")
+    def show_acceptance_result(self, result):
+        case = B_ACCEPTANCE_CASES[result["case_id"]]
+        status_names = {"PASSED": "通过", "FAILED": "失败", "SKIPPED": "跳过", "XFAIL": "预期失败", "XPASS": "意外通过"}
+        tests = "\n".join(f"测试用例：{item['name']}    {status_names.get(item['status'], item['status'])}" for item in result.get("tests", ())) or "没有解析到测试用例。"
+        status = "通过" if result["passed"] else "失败"
+        text = (f"{case.title}\n测试结果：{status}\n\n预期结果：\n{result['expected']}\n\n实际结果：\n{tests}\n{result['summary']}\n\n实际数据：\n{result['evidence']}\n\n结论：\n{result['conclusion']}\n")
+        set_text(self.acceptance_result, text)
+        self.tabs.select(self.acceptance_tab)
+        self.status.set(f"{case.title}测试{status} · 已显示真实数据")
 
     def refresh(self, snapshot):
         self.snapshot = snapshot
         self.path_label.configure(text="●  " + snapshot["path"])
-        self.policy.set(snapshot["policy"])
-        self.capacity.set(snapshot["capacity"])
         self.catalog.delete(*self.catalog.get_children())
         for item in snapshot["tables"]:
             node = self.catalog.insert("", "end", text=item["name"], values=[item["name"]], open=True)
             for column in item["columns"]:
                 dtype = getattr(column["dtype"], "value", column["dtype"])
                 self.catalog.insert(node, "end", text=f'{column["name"]}   {dtype}', values=[item["name"]])
-        stats = snapshot["stats"]
-        self.metrics.configure(text=f'{snapshot["pages"]} 页  ·  {snapshot["pages"] * 4096:,} B 页空间  ·  '
-                               f'命中 {stats["hits"]}   缺失 {stats["misses"]}   淘汰 {stats["evictions"]}   读 {stats["reads"]}   写 {stats["writes"]}')
-        fill(self.frames, [[f["page"], "dirty" if f["dirty"] else "clean", f["pins"]] for f in snapshot["frames"]])
-        fill(self.events, [[e["action"], e["page_id"], e["detail"]] for e in snapshot["events"]])
-        self.page_id.configure(to=max(0, snapshot["pages"] - 1))
-        self.current_page = None
-        self.page_canvas.delete("all")
-        self.page_note.configure(text="点击“读取页面”查看当前快照；数据更新后需要重新读取。")
-        fill(self.slots, [])
-        set_text(self.hex_text, "")
 
     def load_example(self):
         self.editor.delete("1.0", "end")

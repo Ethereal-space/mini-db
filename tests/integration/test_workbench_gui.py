@@ -25,7 +25,7 @@ def gui(tmp_path):
     root.destroy()
 
 
-def test_results_trace_frontend_and_page_widgets(gui):
+def test_results_trace_and_frontend_widgets(gui):
     result = gui.session.execute("CREATE TABLE t(id INT); INSERT INTO t(id) VALUES (7); SELECT id,id FROM t;")
     gui.show_execution(result)
     gui.select_result()
@@ -36,12 +36,30 @@ def test_results_trace_frontend_and_page_widgets(gui):
     gui.show_frontend(analyze("SELECT DISTINCT id FROM t;", ["distinct"]))
     assert "ExtensionStatement" in gui.ast_text.get("1.0", "end")
     assert len(gui.token_tree.get_children()) > 3
-    gui.show_page(gui.session.page(result["snapshot"]["tables"][0]["first_page_id"]))
-    assert len(gui.slots.get_children()) == 1
-    assert gui.page_canvas.find_all()
     assert [gui.tabs.tab(tab, "text") for tab in gui.tabs.tabs()] == [
-        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  Python 存储演示", "05  使用指南"
+        "01  SQL 工作台", "02  前端分析", "03  Python 存储演示", "04  B 编译器验收"
     ]
+
+
+def test_b_acceptance_tab_shows_test_source_and_real_evidence(gui):
+    assert len(gui.acceptance_selector.cget("values")) == 4
+    gui.acceptance_selector.current(0)
+    gui.acceptance_selected()
+    source = gui.acceptance_code.get("1.0", "end-1c")
+    assert "def test_" in source
+    gui.show_acceptance_result({
+        "case_id": "lexical",
+        "passed": True,
+        "expected": "Token 符合预期。",
+        "tests": [{"name": "test_keyword_identifier", "status": "PASSED"}],
+        "summary": "32 passed in 0.10s",
+        "evidence": "实际 Token（共 3 个）\n1 | CREATE | CREATE | create | 1:1-1:7",
+        "conclusion": "词法分析测试通过。",
+    })
+    result = gui.acceptance_result.get("1.0", "end")
+    assert "预期结果" in result
+    assert "实际 Token（共 3 个）" in result
+    assert "CREATE | CREATE" in result
 
 
 def test_background_execution_finishes_and_error_clears_old_results(gui):
@@ -67,7 +85,6 @@ def test_reconnect_clears_stale_result_and_refreshes_catalog(gui):
     gui.changed_database(gui.session.reconnect(policy="fifo", capacity=2))
     assert gui.results == []
     assert gui.result_select.get() == ""
-    assert gui.policy.get() == "fifo"
     assert len(gui.catalog.get_children()) == 1
 
 

@@ -89,6 +89,18 @@ def test_lexical_failure_replaces_previous_analysis():
     assert result["ast"] == []
 
 
+def test_b_acceptance_runner_returns_real_data_and_test_rows(tmp_path):
+    session = WorkbenchSession(tmp_path / "acceptance.db")
+    try:
+        result = session.run_acceptance_case("lexical")
+    finally:
+        session.close()
+    assert result["passed"] is True
+    assert result["tests"]
+    assert result["tests"][0]["name"].startswith("test_")
+    assert "序号 | 类型 | 词素 | 值 | 位置" in result["evidence"]
+
+
 def test_scoring_rubric_cases_have_passing_evidence(session):
     """The built-in scoring page must exercise the real implementation."""
 
