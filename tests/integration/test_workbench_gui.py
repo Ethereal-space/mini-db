@@ -40,7 +40,7 @@ def test_results_trace_frontend_and_page_widgets(gui):
     assert len(gui.slots.get_children()) == 1
     assert gui.page_canvas.find_all()
     assert [gui.tabs.tab(tab, "text") for tab in gui.tabs.tabs()] == [
-        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  使用指南"
+        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  Python 存储演示", "05  使用指南"
     ]
 
 
@@ -69,3 +69,13 @@ def test_reconnect_clears_stale_result_and_refreshes_catalog(gui):
     assert gui.result_select.get() == ""
     assert gui.policy.get() == "fifo"
     assert len(gui.catalog.get_children()) == 1
+
+
+def test_storage_rubric_python_source_editor_is_editable(gui):
+    gui.update_rubric_cases()
+    assert gui.rubric_source.cget("state") == "normal"
+    gui.rubric_source.insert("end", "\nprint('GUI_EDIT_MARKER')\n")
+    assert "GUI_EDIT_MARKER" in gui.rubric_source.get("1.0", "end-1c")
+    assert gui.rubric_source.tag_ranges("py_comment")
+    assert gui.rubric_source.tag_ranges("py_keyword")
+    assert gui.rubric_source.tag_ranges("py_string")

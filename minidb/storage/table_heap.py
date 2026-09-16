@@ -20,18 +20,22 @@ from .superblock import DatabaseFile, StorageFormatError
 
 
 def _storage_error(code: str, message: str, **context: object) -> StorageError:
+    """供表堆边界与 RID 错误分支统一创建 StorageError；附带存储上下文。"""
+
     return StorageError(code, message, span=None, context=context)
 
 
 @dataclass(frozen=True, slots=True)
 class _TableDescriptor:
+    """统一 TableMeta 与 Catalog 原始入口；由 TableHeap 内部方法传递表定位信息。"""
+
     table_id: int
     first_page_id: int
     columns: tuple[ColumnMeta, ...]
 
 
 class TableHeap:
-    """实现冻结 ``StoragePort``，并给页式 Catalog 提供内部同构入口。"""
+    """实现 StoragePort，串联 RowCodec、Page、BufferPool 与 DiskManager 完成行存储。"""
 
     def __init__(
         self,
@@ -43,6 +47,8 @@ class TableHeap:
         policy: str = "LRU",
         free_space_map: FreeSpaceMap | None = None,
     ) -> None:
+        """由存储装配层创建；按输入类型取得磁盘和缓存所有权，并建立内存 FSM。"""
+
         if pool_size is not None:
             buffer_pool_size = pool_size
         self._owns_pool = False
@@ -74,33 +80,49 @@ class TableHeap:
 
     @property
     def disk(self) -> DiskManager:
+        """供 Catalog 仓库和诊断读取底层 DiskManager；不转移所有权。"""
+
         return self._disk
 
     @property
     def disk_manager(self) -> DiskManager:
+        """提供 disk 的明确别名；供需要页分配接口的内部组件使用。"""
+
         return self._disk
 
     @property
     def buffer_pool(self) -> BufferPool:
+        """供页式 Catalog 和诊断访问共享缓存；返回当前 BufferPool。"""
+
         return self._buffer
 
     @property
     def page_count(self) -> int:
+        """供测试和链边界检查读取总页数；转发 DiskManager.page_count。"""
+
         return self._disk.page_count
 
     @property
     def closed(self) -> bool:
+        """供生命周期检查读取表堆关闭状态。"""
+
         return self._closed
 
     @property
     def free_space_map(self) -> FreeSpaceMap:
+        """供维护和诊断读取容量提示索引；返回共享 FreeSpaceMap 对象。"""
+
         return self._free_space_map
 
     @property
     def fsm(self) -> FreeSpaceMap:
+        """提供 free_space_map 的简写别名；便于课程演示与测试。"""
+
         return self._free_space_map
 
     def create_table(self, table_id: int, columns: tuple[ColumnMeta, ...]) -> int:
+        """供 CREATE 执行器调用；校验 schema、分配首页、写空页并推进表号下界。"""
+
         self._check_open()
         self._validate_schema(table_id, columns)
         first_page_id = self._disk.allocate_page()
@@ -114,19 +136,25 @@ class TableHeap:
         return first_page_id
 
     def insert(self, table: TableMeta, values: tuple[object, ...]) -> RID:
+        """供 INSERT 执行器调用；把 TableMeta 转为描述后委托真实插入流程。"""
+
         descriptor = self._descriptor(table)
         return self._insert_descriptor(descriptor, values)
 
     def scan(self, table: TableMeta) -> Iterator[StoredRow]:
+        """供 SeqScan 调用；规范化表描述后按页链惰性产生 StoredRow。"""
+
         descriptor = self._descriptor(table)
         yield from self._scan_descriptor(descriptor)
 
     def mark_delete(self, table: TableMeta, rid: RID) -> None:
+        """供 DELETE 执行器调用；规范化表描述后在所属页设置 tombstone。"""
+
         descriptor = self._descriptor(table)
         self._mark_delete_descriptor(descriptor, rid)
 
     def rebuild_free_space_map(self, table: TableMeta) -> int:
-        """从真实页链重建一张表的内存容量提示。"""
+        """供启动或诊断重建 FSM；读取并验证真实页链，再批量生成容量提示。"""
 
         descriptor = self._descriptor(table)
         pages: list[Page] = []
@@ -140,26 +168,38 @@ class TableHeap:
     rebuild_fsm = rebuild_free_space_map
 
     def flush_all(self) -> None:
+        """供 StoragePort 提交和关闭前持久化；检查状态后委托 BufferPool。"""
+
         self._check_open()
         self._buffer.flush_all()
 
     flush = flush_all
 
     def stats(self) -> BufferStats:
+        """供工作台和执行 Trace 读取缓存统计；委托 BufferPool.stats。"""
+
         return self._buffer.stats()
 
     def table_page_count(self, table: TableMeta | object) -> int:
+        """供测试和演示统计表页数；转换描述、遍历完整页链后计数。"""
+
         descriptor = self._descriptor(table) if isinstance(table, TableMeta) else self._coerce_descriptor(table)
         return len(tuple(self._chain_pages(descriptor)))
 
     def page_chain(self, table: TableMeta) -> tuple[int, ...]:
+        """供诊断展示表的物理布局；验证并收集页链为不可变元组。"""
+
         return tuple(self._chain_pages(self._descriptor(table)))
 
     def catalog_page_count(self) -> int:
+        """供 Catalog 持久化测试统计特殊表页数；以表号 0 遍历 page 1 链。"""
+
         descriptor = _TableDescriptor(0, CATALOG_PAGE_ID, ())
         return len(tuple(self._chain_pages(descriptor, allow_empty_schema=True)))
 
     def close(self) -> None:
+        """供上下文退出或装配层关闭；按所有权关闭缓存，否则只刷新，并保持幂等。"""
+
         if self._closed:
             return
         if self._owns_pool:
@@ -169,25 +209,37 @@ class TableHeap:
         self._closed = True
 
     def __enter__(self) -> "TableHeap":
+        """支持 ``with TableHeap``；检查未关闭后返回自身。"""
+
         self._check_open()
         return self
 
     def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        """由上下文管理器调用；退出时统一执行 close。"""
+
         self.close()
 
     def insert_raw(self, table_id: int, first_page_id: int, columns: Sequence[ColumnMeta], values: Sequence[object]) -> RID:
+        """供 PageCatalogRepository 写特殊表；组装内部描述后复用普通插入链。"""
+
         descriptor = _TableDescriptor(table_id, first_page_id, tuple(columns))
         return self._insert_descriptor(descriptor, tuple(values))
 
     def scan_raw(self, table_id: int, first_page_id: int, columns: Sequence[ColumnMeta]) -> Iterator[StoredRow]:
+        """供 PageCatalogRepository 读特殊表；组装内部描述后复用普通扫描链。"""
+
         descriptor = _TableDescriptor(table_id, first_page_id, tuple(columns))
         yield from self._scan_descriptor(descriptor, allow_empty_schema=False)
 
     def mark_delete_raw(self, table_id: int, first_page_id: int, columns: Sequence[ColumnMeta], rid: RID) -> None:
+        """供内部特殊表删除记录；组装描述后复用 tombstone 流程。"""
+
         descriptor = _TableDescriptor(table_id, first_page_id, tuple(columns))
         self._mark_delete_descriptor(descriptor, rid)
 
     def _insert_descriptor(self, descriptor: _TableDescriptor, values: Sequence[object]) -> RID:
+        """由公开和 raw 插入入口调用；编码行、查 FSM/页链，必要时追加页并返回 RID。"""
+
         self._check_open()
         payload = RowCodec.encode(descriptor.columns, values)
         required = SLOT_SIZE + len(payload)
@@ -266,6 +318,8 @@ class TableHeap:
         *,
         allow_empty_schema: bool = False,
     ) -> Iterator[StoredRow]:
+        """由 scan 入口调用；防环遍历页链、解码存活 payload 并惰性产出行。"""
+
         self._check_open()
         page_id: int | None = descriptor.first_page_id
         seen: set[int] = set()
@@ -291,6 +345,8 @@ class TableHeap:
             page_id = next_page_id
 
     def _mark_delete_descriptor(self, descriptor: _TableDescriptor, rid: RID) -> None:
+        """由删除入口调用；沿页链定位 RID，设置 tombstone、标脏并刷新 FSM。"""
+
         self._check_open()
         if not isinstance(rid, RID):
             raise ValueError("rid 必须是冻结 RID")
@@ -329,6 +385,8 @@ class TableHeap:
         )
 
     def _chain_pages(self, descriptor: _TableDescriptor, *, allow_empty_schema: bool = False) -> Iterator[int]:
+        """由插入、扫描和诊断共用；逐页验证归属与后继边界，并检测链环。"""
+
         page_id: int | None = descriptor.first_page_id
         seen: set[int] = set()
         while page_id is not None and page_id != INVALID_PAGE_ID:
@@ -343,6 +401,8 @@ class TableHeap:
             page_id = next_page_id
 
     def _check_table_page(self, page: Page, descriptor: _TableDescriptor, *, allow_empty_schema: bool = False) -> None:
+        """由所有页链操作调用；核对 table_id、schema 要求和后继页范围。"""
+
         if page.table_id != descriptor.table_id:
             raise StorageFormatError(
                 "TABLE_ID_MISMATCH",
@@ -360,6 +420,8 @@ class TableHeap:
 
     @staticmethod
     def _validate_schema(table_id: int, columns: Sequence[ColumnMeta]) -> None:
+        """由 create_table 调用；校验表号、非空列集及连续 ordinal。"""
+
         if not isinstance(table_id, int) or isinstance(table_id, bool) or table_id < 1:
             raise ValueError("table_id 必须是大于等于 1 的整数")
         schema = tuple(columns)
@@ -371,22 +433,30 @@ class TableHeap:
 
     @staticmethod
     def _descriptor(table: TableMeta) -> _TableDescriptor:
+        """由公开 StoragePort 方法调用；验证冻结 TableMeta 并提取内部描述。"""
+
         if not isinstance(table, TableMeta):
             raise ValueError("table 必须是冻结 TableMeta")
         return _TableDescriptor(table.table_id, table.first_page_id, table.columns)
 
     @staticmethod
     def _coerce_descriptor(value: object) -> _TableDescriptor:
+        """由兼容诊断入口调用；只接受已构造的内部描述，否则拒绝。"""
+
         if isinstance(value, _TableDescriptor):
             return value
         raise ValueError("需要 TableMeta 或内部表描述")
 
     def _check_open(self) -> None:
+        """由所有公开存储操作调用；关闭后抛出明确生命周期错误。"""
+
         if self._closed:
             raise StorageError("CLOSED_STORAGE", "TableHeap 已关闭", span=None, context={})
 
     @property
     def _page_version(self) -> int:
+        """供创建新 Page 选择格式；从 DiskManager 读取版本，缺省兼容 v1。"""
+
         return int(getattr(self._disk, "page_version", 1))
 
 

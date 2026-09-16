@@ -32,6 +32,8 @@ TOMBSTONE_FLAG: Final[int] = SLOT_DELETED
 
 
 def _error(error_type: type[StorageError], code: str, message: str, page_id: int, **context: object) -> StorageError:
+    """供页解析和操作分支统一构造错误；附加 page_id 并保留格式错误类型。"""
+
     context = {"page_id": page_id, **context}
     if error_type is StorageFormatError:
         return StorageFormatError(code, message, context)
@@ -39,19 +41,21 @@ def _error(error_type: type[StorageError], code: str, message: str, page_id: int
 
 
 class PageFullError(StorageError):
-    """页没有同时容纳新记录和新 Slot 的空间。"""
+    """由插入路径在 Slot 与记录空间不足时抛出，供 TableHeap 换页重试。"""
 
 
 class SlotNotFoundError(StorageError):
-    """请求的槽号不在页的 Slot 目录中。"""
+    """由 slot 校验非法槽号时抛出，供 RID 读取和删除路径报告错误。"""
 
 
 class RecordDeletedError(StorageError):
-    """请求读取的槽已被逻辑删除。"""
+    """由 read 遇到 tombstone 时抛出，阻止上层返回已删除记录。"""
 
 
 @dataclass(frozen=True, slots=True)
 class Slot:
+    """描述记录在页内的偏移、长度和标志；由 Page 解析或插入时创建。"""
+
     offset: int
     length: int
     flags: int = 0
@@ -59,15 +63,19 @@ class Slot:
 
     @property
     def is_deleted(self) -> bool:
+        """供扫描和读取判断 tombstone；检查 flags 中的删除位。"""
+
         return bool(self.flags & SLOT_DELETED)
 
     @property
     def deleted(self) -> bool:
+        """提供兼容只读别名；直接返回 is_deleted 的判断结果。"""
+
         return self.is_deleted
 
 
 class Page:
-    """可验证、可往返序列化的页内槽目录。"""
+    """由 TableHeap 读写的 4096 字节 Slotted Page，管理槽目录与记录区。"""
 
     def __init__(
         self,
@@ -79,6 +87,8 @@ class Page:
         version: int = DATA_PAGE_VERSION,
         data: bytes | bytearray | memoryview | None = None,
     ) -> None:
+        """由新页或兼容加载路径调用；解析现有字节，或建立空页并同步页头。"""
+
         if data is not None:
             parsed = type(self).from_bytes(data, expected_page_id=page_id)
             self._data = parsed._data
@@ -113,6 +123,8 @@ class Page:
         flags: int = 0,
         version: int = DATA_PAGE_VERSION,
     ) -> "Page":
+        """供 DiskManager/TableHeap 创建空页；把标识字段交给构造器初始化。"""
+
         return cls(page_id, table_id, next_page_id, flags=flags, version=version)
 
     @classmethod
@@ -123,6 +135,8 @@ class Page:
         expected_page_id: int | None = None,
         page_id: int | None = None,
     ) -> "Page":
+        """供读盘路径解码页；先验长度和校验和，再校验页头、槽及记录边界。"""
+
         if expected_page_id is None:
             expected_page_id = page_id
         raw = bytes(data)
@@ -287,6 +301,8 @@ class Page:
 
     @staticmethod
     def _validate_identity(page_id: int, table_id: int, next_page_id: int, flags: int, version: int) -> None:
+        """由空页构造调用；在写入 struct 前校验各标识字段可表示范围。"""
+
         if not isinstance(page_id, int) or isinstance(page_id, bool) or not CATALOG_PAGE_ID <= page_id <= MAX_I32:
             raise ValueError("page_id 必须是大于等于 1 的整数")
         if not isinstance(table_id, int) or isinstance(table_id, bool) or not 0 <= table_id <= 0xFFFFFFFF:
@@ -302,18 +318,26 @@ class Page:
 
     @property
     def page_id(self) -> int:
+        """供 RID 和磁盘路径读取页号；返回创建或解码得到的固定标识。"""
+
         return self._page_id
 
     @property
     def table_id(self) -> int:
+        """供 TableHeap 验证归属；返回页头中的表号。"""
+
         return self._table_id
 
     @property
     def next_page_id(self) -> int:
+        """供 TableHeap 顺链扫描；返回下一页号或 INVALID_PAGE_ID。"""
+
         return self._next_page_id
 
     @next_page_id.setter
     def next_page_id(self, value: int) -> None:
+        """供 TableHeap 连接新页；校验页号、更新字段并重写页头。"""
+
         if value != INVALID_PAGE_ID and (
             not isinstance(value, int) or value <= CATALOG_PAGE_ID or value > MAX_I32
         ):
@@ -324,29 +348,40 @@ class Page:
 
     @property
     def flags(self) -> int:
+        """供格式诊断读取页级标志；不修改底层字节。"""
+
         return self._flags
 
     @property
     def version(self) -> int:
+        """供序列化和校验选择格式；返回页头版本号。"""
+
         return self._version
 
     @property
     def slot_count(self) -> int:
+        """供扫描和容量诊断读取槽数；由内存槽列表长度计算。"""
+
         return len(self._slots)
 
     @property
     def free_start(self) -> int:
+        """供 FreeSpaceMap 计算空间；返回槽目录结束偏移。"""
+
         return self._free_start
 
     @property
     def free_end(self) -> int:
+        """供 FreeSpaceMap 计算空间；返回连续记录区起始偏移。"""
+
         return self._free_end
 
     @property
     def payload_limit(self) -> int:
         """当前页可用于记录 payload 的上界。
 
-        v1 页没有校验和，记录区可以一直延伸到页尾。后续的 v2 页会把
+        Page 插入、压缩和格式校验共同调用。v1 页没有校验和，记录区可以
+        一直延伸到页尾。后续的 v2 页会把
         最后四个字节保留给 CRC；把上界作为页属性可以让复用和压缩逻辑
         使用同一个边界，而不会把格式版本散落在调用方。
         """
@@ -355,31 +390,43 @@ class Page:
 
     @property
     def payload_end(self) -> int:
+        """提供容量算法兼容别名；直接返回 payload_limit。"""
+
         return self.payload_limit
 
     @property
     def checksum_offset(self) -> int | None:
+        """供诊断定位校验和；v2 返回固定偏移，v1 返回 None。"""
+
         return CHECKSUM_OFFSET if self._version == DATA_PAGE_VERSION_V2 else None
 
     @property
     def available(self) -> int:
-        """不考虑已删除记录洞时，能够容纳的新 Slot+payload 字节数。"""
+        """供 TableHeap 判断连续空间；计算 free_end 与 free_start 的非负差。"""
 
         return max(0, self._free_end - self._free_start)
 
     @property
     def data(self) -> bytes:
+        """供兼容调用读取完整页；通过 to_bytes 同步页头并按版本封装校验和。"""
+
         return self.to_bytes()
 
     @property
     def slots(self) -> tuple[Slot, ...]:
+        """供扫描和测试读取槽目录；返回不可变快照以保护内部列表。"""
+
         return tuple(self._slots)
 
     @property
     def live_count(self) -> int:
+        """供统计读取存活记录数；遍历槽并排除 tombstone。"""
+
         return sum(not slot.is_deleted for slot in self._slots)
 
     def slot(self, slot_id: int) -> Slot:
+        """供 RID 读取和删除定位槽；校验索引范围后返回对应 Slot。"""
+
         if not isinstance(slot_id, int) or isinstance(slot_id, bool) or not 0 <= slot_id < len(self._slots):
             raise _error(SlotNotFoundError, "SLOT_NOT_FOUND", f"slot_id 不存在：{slot_id}", self._page_id, slot_id=slot_id)
         return self._slots[slot_id]
@@ -387,12 +434,15 @@ class Page:
     get_slot = slot
 
     def insert(self, payload: bytes | bytearray | memoryview) -> int:
+        """供 TableHeap 插入二进制行；委托可复用洞的实现并返回新 slot_id。"""
+
         return self.insert_reusing_hole(payload)
 
     def find_hole(self, size: int) -> int | None:
         """按 first-fit 返回一个可容纳 ``size`` 字节的已删除 payload 洞。
 
-        删除槽本身仍然占用目录项，新的记录只能追加新的 Slot。候选洞先
+        insert_reusing_hole 在追加记录前调用。删除槽本身仍然占用目录项，
+        新的记录只能追加新的 Slot。候选洞先
         从删除槽的 payload 区收集，再减去所有存活记录，因而连续插入不会
         覆盖刚刚写入的存活记录。返回值是洞的起始偏移，找不到时为 None。
         """
@@ -441,7 +491,8 @@ class Page:
     def insert_reusing_hole(self, payload: bytes | bytearray | memoryview) -> int:
         """插入记录，优先复用删除 payload 洞但始终追加新的 Slot。
 
-        该方法只在完成所有容量和页格式检查后才修改字节，因此失败路径
+        TableHeap 调用它落盘编码行。该方法只在完成所有容量和页格式检查后
+        才修改字节，因此失败路径
         保证页内容与 Slot 目录保持不变。洞不足时回退到页尾的普通追加。
         """
 
@@ -504,7 +555,8 @@ class Page:
     def compact(self) -> None:
         """压缩页内存活 payload，保持 slot_id/RID 稳定。
 
-        先从当前字节构造只读快照并完整校验，再在临时页缓冲中按 slot_id
+        页面维护或扩展任务调用。先从当前字节构造只读快照并完整校验，再
+        在临时页缓冲中按 slot_id
         复制存活记录。任何校验失败都在修改前抛出，因而原页字节保持不变。
         """
 
@@ -570,9 +622,13 @@ class Page:
 
     compact_page = compact
     def compact_in_place(self) -> None:
+        """供偏好显式原地语义的调用方使用；委托 compact 保持 RID 稳定。"""
+
         self.compact()
 
     def read(self, slot_id: int) -> bytes:
+        """供 TableHeap 按 RID 取行；定位槽、拒绝 tombstone 后复制 payload。"""
+
         slot = self.slot(slot_id)
         if slot.is_deleted:
             raise _error(
@@ -588,6 +644,8 @@ class Page:
     read_slot = read
 
     def mark_deleted(self, slot_id: int) -> bool:
+        """供 DELETE 执行路径标记记录；幂等设置删除位并同步槽目录字节。"""
+
         slot = self.slot(slot_id)
         if slot.is_deleted:
             return False
@@ -601,16 +659,22 @@ class Page:
     delete_slot = mark_deleted
 
     def iter_live(self) -> Iterator[tuple[int, bytes]]:
+        """供 TableHeap 顺序扫描；按 slot_id 产生未删除记录的字节副本。"""
+
         for slot_id, slot in enumerate(self._slots):
             if not slot.is_deleted:
                 yield slot_id, bytes(self._data[slot.offset : slot.offset + slot.length])
 
     def validate(self) -> None:
+        """供写回前自检；序列化后重新解析，并比较槽状态是否一致。"""
+
         parsed = type(self).from_bytes(self.to_bytes(), expected_page_id=self._page_id)
         if parsed._slots != self._slots:
             raise _error(StorageFormatError, "PAGE_STATE_MISMATCH", "页内状态与序列化字节不一致", self._page_id)
 
     def to_bytes(self) -> bytes:
+        """供 BufferPool/DiskManager 写回；同步页头，v2 额外写入 CRC。"""
+
         self._sync_header()
         raw = bytes(self._data)
         if self._version == DATA_PAGE_VERSION_V2:
@@ -622,6 +686,8 @@ class Page:
     serialize = to_bytes
 
     def _sync_header(self) -> None:
+        """由所有页状态变更调用；清旧校验和并把内存字段打包到固定页头。"""
+
         self._mark_checksum_dirty()
         DATA_PAGE_STRUCT.pack_into(
             self._data,
@@ -639,6 +705,8 @@ class Page:
         )
 
     def _mark_checksum_dirty(self) -> None:
+        """由页修改路径调用；v2 把 CRC 字段清零，等待 to_bytes 重新封装。"""
+
         if self._version == DATA_PAGE_VERSION_V2:
             self._data[CHECKSUM_OFFSET : CHECKSUM_OFFSET + 4] = bytes(4)
 
