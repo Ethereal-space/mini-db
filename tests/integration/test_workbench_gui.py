@@ -40,8 +40,29 @@ def test_results_trace_frontend_and_page_widgets(gui):
     assert len(gui.slots.get_children()) == 1
     assert gui.page_canvas.find_all()
     assert [gui.tabs.tab(tab, "text") for tab in gui.tabs.tabs()] == [
-        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  Python 存储演示", "05  使用指南"
+        "01  SQL 工作台", "02  前端分析", "03  页与缓存", "04  Python 存储演示", "05  使用指南", "06  B 编译器验收"
     ]
+
+
+def test_b_acceptance_tab_shows_test_source_and_real_evidence(gui):
+    assert len(gui.acceptance_selector.cget("values")) == 4
+    gui.acceptance_selector.current(0)
+    gui.acceptance_selected()
+    source = gui.acceptance_code.get("1.0", "end-1c")
+    assert "def test_" in source
+    gui.show_acceptance_result({
+        "case_id": "lexical",
+        "passed": True,
+        "expected": "Token 符合预期。",
+        "tests": [{"name": "test_keyword_identifier", "status": "PASSED"}],
+        "summary": "32 passed in 0.10s",
+        "evidence": "实际 Token（共 3 个）\n1 | CREATE | CREATE | create | 1:1-1:7",
+        "conclusion": "词法分析测试通过。",
+    })
+    result = gui.acceptance_result.get("1.0", "end")
+    assert "预期结果" in result
+    assert "实际 Token（共 3 个）" in result
+    assert "CREATE | CREATE" in result
 
 
 def test_background_execution_finishes_and_error_clears_old_results(gui):

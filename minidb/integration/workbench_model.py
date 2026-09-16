@@ -13,10 +13,17 @@ from contextlib import redirect_stdout
 from io import StringIO
 import json
 from pathlib import Path
+import re
+import subprocess
+import sys
 import tempfile
 import time
+from types import MappingProxyType
 
+from minidb.compiler.plan_formatter import format_plan
+from minidb.compiler.semantic import analyze_select
 from minidb.contracts import MiniDBError
+from minidb.contracts.bound import BoundBinary, BoundColumn, BoundLiteral, BoundUnary
 from minidb.frontend import Frontend, Lexer
 from minidb.frontend.formatter import format_ast, format_tokens
 from minidb.storage.constants import PAGE_SIZE
@@ -201,6 +208,79 @@ def analyze(source: str, extensions=()) -> dict:
     return result
 
 
+@dataclass(frozen=True, slots=True)
+class AcceptanceCase:
+    case_id: str
+    title: str
+    code: str
+    test_paths: tuple[str, ...]
+    conclusion: str
+    expected: str
+
+    @property
+    def test_source(self) -> str:
+        return "\n\n".join((SOURCE / path).read_text(encoding="utf-8") for path in self.test_paths)
+
+    @property
+    def command(self) -> str:
+        return "python -m pytest -vv -p no:cacheprovider " + " ".join(self.test_paths)
+
+
+B_ACCEPTANCE_CASES = MappingProxyType({
+    "lexical": AcceptanceCase("lexical", "词法分析（4分）", "CREATE TABLE student(id INT, name VARCHAR, age INT);\nINSERT INTO student VALUES (1, 'Alice', 20);\nSELECT id, name FROM student WHERE age >= 18;", ("tests/frontend/test_a_b01.py", "tests/frontend/test_a_b02.py"), "验证关键字、标识符、常量、运算符、注释和非法输入定位。", "关键字、标识符、常量、运算符、注释、非法输入及源码位置符合预期。"),
+    "syntax": AcceptanceCase("syntax", "语法分析（4分）", "CREATE TABLE student(id INT, name VARCHAR, age INT);\nINSERT INTO student VALUES (1, 'Alice', 20);\nSELECT id, name FROM student WHERE age >= 18;\nDELETE FROM student WHERE id = 1;", ("tests/frontend/test_a_b03.py", "tests/frontend/test_a_b04.py", "tests/frontend/test_a_b05.py", "tests/frontend/test_a_b06.py"), "验证四类核心 SQL 的 AST 构造和典型语法错误。", "CREATE、INSERT、SELECT、DELETE 的 AST 结构及典型语法错误符合预期。"),
+    "semantic": AcceptanceCase("semantic", "语义分析（4分）", "SELECT name FROM student WHERE age >= 18;\nSELECT missing FROM student;\nINSERT INTO student(id, name) VALUES (1, 'Alice');", ("tests/compiler/test_b_b01.py", "tests/compiler/test_b_b02.py", "tests/compiler/test_b_b03.py", "tests/compiler/test_b_b04.py"), "验证 Catalog、表列存在性、列绑定、类型和列数检查。", "表和列存在性、列绑定序号、数据类型、列数及错误位置符合预期。"),
+    "plan": AcceptanceCase("plan", "执行计划生成（4分）", "SELECT id, name FROM student WHERE age >= 18;\nDELETE FROM student WHERE id = 1;", ("tests/compiler/test_b_b05.py", "tests/compiler/test_b_b06.py"), "验证 Project、Filter、SeqScan、DeletePlan 和优化计划结构。", "Project、Filter、SeqScan、DeletePlan 及优化后的节点关系符合预期。"),
+})
+
+_PYTEST_CASE_RE = re.compile(r"::(?P<name>test[^\s]+)\s+(?P<status>PASSED|FAILED|SKIPPED|XFAIL|XPASS)\b")
+
+
+def _bound_text(value: object) -> str:
+    if isinstance(value, BoundColumn):
+        return f"{value.name}[序号={value.index}, 类型={value.dtype.value}]"
+    if isinstance(value, BoundLiteral):
+        return f"{value.value!r}[类型={value.dtype.value}]"
+    if isinstance(value, BoundBinary):
+        return f"({_bound_text(value.left)} {value.op} {_bound_text(value.right)})"
+    if isinstance(value, BoundUnary):
+        return f"({value.op} {_bound_text(value.operand)})"
+    return "无"
+
+
+def build_acceptance_evidence(case_id: str) -> str:
+    case = B_ACCEPTANCE_CASES[case_id]
+    if case_id == "lexical":
+        tokens = Lexer(case.code).tokenize()
+        lines = [f"实际 Token（共 {len(tokens)} 个）", "序号 | 类型 | 词素 | 值 | 位置", "--- | --- | --- | --- | ---"]
+        for number, token in enumerate(tokens, 1):
+            start, end = token.span.start, token.span.end
+            lines.append(f"{number} | {token.kind.name} | {token.lexeme or 'EOF'} | {token.value if token.value is not None else ''} | {start.line}:{start.column}-{end.line}:{end.column}")
+        return "\n".join(lines)
+    if case_id == "syntax":
+        statements = Frontend().parse(case.code)
+        return "实际 AST（共 {} 条语句）\n{}".format(len(statements), json.dumps(json.loads(format_ast(statements)), ensure_ascii=False, indent=2))
+    with tempfile.TemporaryDirectory(prefix="acceptance-", dir=SOURCE) as directory:
+        app = MiniDBApplication(Path(directory) / "evidence.db")
+        try:
+            app.execute("CREATE TABLE student(id INT, name VARCHAR, age INT);")
+            if case_id == "semantic":
+                statement = Frontend().parse("SELECT id, name FROM student WHERE age >= 18;")[0]
+                bound = analyze_select(statement, app.catalog)
+                table = app.catalog.get_table("student")
+                selected = "\n".join(f"{name} | {index} | {table.columns[index].dtype.value}" for name, index in zip(bound.names, bound.indices, strict=True))
+                try:
+                    app.execute("SELECT missing FROM student;")
+                except MiniDBError as error:
+                    error_text = f"阶段={error.stage}，代码={error.code}\n{error}"
+                return f"实际绑定：\n表：student\n列名 | 序号 | 类型\n--- | --- | ---\n{selected}\nWHERE：{_bound_text(bound.where)}\n\n实际错误：\n{error_text}"
+            results = [app.execute(sql, trace=True)[0] for sql in ("SELECT id, name FROM student WHERE age >= 18;", "DELETE FROM student WHERE id = 1;")]
+            plans = [(event.stage, event.detail) for result in results for event in result.trace if event.stage in {"PLAN", "OPTIMIZED_PLAN"}]
+            return "实际计划：\n" + "\n\n".join(f"计划 {index}（{'原始' if stage == 'PLAN' else '优化后'}）：\n{detail}" for index, (stage, detail) in enumerate(plans, 1))
+        finally:
+            app.close()
+
+
 def _check(name: str, passed: bool, evidence: str) -> dict:
     """Create a stable, display-ready evidence record for one rubric item."""
 
@@ -328,6 +408,16 @@ class WorkbenchSession:
                 position = [exc.span.start.line, exc.span.start.column]
         return {"source": source, "results": results, "error": error, "position": position,
                 "seconds": time.perf_counter() - started, "snapshot": self.snapshot()}
+
+    def run_acceptance_case(self, case_id: str) -> dict:
+        case = B_ACCEPTANCE_CASES[case_id]
+        command = [sys.executable, "-m", "pytest", "-vv", "-p", "no:cacheprovider", *case.test_paths]
+        completed = subprocess.run(command, cwd=SOURCE, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, check=False)
+        combined = "\n".join((completed.stdout, completed.stderr))
+        tests = [{"name": match.group("name"), "status": match.group("status")} for match in _PYTEST_CASE_RE.finditer(combined)]
+        summary = next((line.strip() for line in reversed(combined.splitlines()) if re.search(r"\d+\s+(passed|failed|error|skipped)", line)), "没有找到 pytest 汇总。")
+        evidence = build_acceptance_evidence(case_id)
+        return {"case_id": case_id, "returncode": completed.returncode, "passed": completed.returncode == 0, "command": " ".join(command), "stdout": completed.stdout, "stderr": completed.stderr, "tests": tests, "summary": summary, "expected": case.expected, "evidence": evidence, "conclusion": case.conclusion if completed.returncode == 0 else f"{case.title} 未通过，请查看测试输出。"}
 
     def snapshot(self) -> dict:
         pool, disk = self.app.storage.buffer_pool, self.app.storage.disk

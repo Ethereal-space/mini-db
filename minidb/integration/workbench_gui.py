@@ -16,6 +16,7 @@ import traceback
 
 from minidb.contracts import MiniDBError
 from .workbench_model import (
+    B_ACCEPTANCE_CASES,
     EXAMPLES,
     RUBRIC_CASES,
     SOURCE,
@@ -218,6 +219,8 @@ class Workbench:
         self.build_frontend()
         self.build_storage()
         self.build_rubric()
+        self.acceptance_tab = self.tab("06  B 编译器验收")
+        self.build_acceptance()
         self.build_help()
         self.refresh(session.snapshot())
         self.load_example()
@@ -500,6 +503,60 @@ class Workbench:
              for item in result["checks"]],
         )
         self.status.set(f"评分用例 {result['case_id']}：{state}；当前数据库未被用例修改。")
+
+    def build_acceptance(self):
+        controls = ttk.Frame(self.acceptance_tab)
+        controls.pack(fill="x", pady=(0, 10))
+        ttk.Label(controls, text="选择 B 评分项：", font=("Microsoft YaHei UI", 10, "bold")).pack(side="left")
+        self.acceptance_keys = tuple(B_ACCEPTANCE_CASES)
+        self.acceptance_selector = ttk.Combobox(
+            controls,
+            values=tuple(B_ACCEPTANCE_CASES[key].title for key in self.acceptance_keys),
+            state="readonly",
+            width=24,
+        )
+        self.acceptance_selector.current(0)
+        self.acceptance_selector.pack(side="left", padx=7)
+        self.acceptance_selector.bind("<<ComboboxSelected>>", self.acceptance_selected)
+        ttk.Label(controls, text="选择后运行真实 pytest，并显示生产代码现场数据。", foreground=MUTED).pack(side="left")
+        panes = ttk.Panedwindow(self.acceptance_tab, orient="horizontal")
+        panes.pack(fill="both", expand=True)
+        left, right = ttk.Frame(panes), ttk.Frame(panes)
+        panes.add(left, weight=1)
+        panes.add(right, weight=1)
+        ttk.Label(left, text="实际测试代码", font=("Microsoft YaHei UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_code = text_box(left, height=28)
+        self.acceptance_code.pack(fill="both", expand=True)
+        ttk.Label(right, text="预期结果与实际结果", font=("Microsoft YaHei UI", 11, "bold")).pack(anchor="w", pady=6)
+        self.acceptance_result = text_box(right, height=28)
+        self.acceptance_result.pack(fill="both", expand=True)
+        self._show_acceptance_code(B_ACCEPTANCE_CASES[self.acceptance_keys[0]])
+        set_text(self.acceptance_result, "请选择评分项，系统将运行真实测试并输出实际数据。")
+
+    def _show_acceptance_code(self, case):
+        set_text(self.acceptance_code, case.test_source)
+
+    def acceptance_selected(self, event=None):
+        if self.busy:
+            self.status.set("正在执行验收测试，请等待当前测试完成。")
+            return
+        index = self.acceptance_selector.current()
+        if index < 0:
+            return
+        case = B_ACCEPTANCE_CASES[self.acceptance_keys[index]]
+        self._show_acceptance_code(case)
+        set_text(self.acceptance_result, "正在运行真实测试，请稍候……")
+        self.submit(f"正在运行 {case.title}…", lambda: self.session.run_acceptance_case(case.case_id), self.show_acceptance_result)
+
+    def show_acceptance_result(self, result):
+        case = B_ACCEPTANCE_CASES[result["case_id"]]
+        status_names = {"PASSED": "通过", "FAILED": "失败", "SKIPPED": "跳过", "XFAIL": "预期失败", "XPASS": "意外通过"}
+        tests = "\n".join(f"测试用例：{item['name']}    {status_names.get(item['status'], item['status'])}" for item in result.get("tests", ())) or "没有解析到测试用例。"
+        status = "通过" if result["passed"] else "失败"
+        text = (f"{case.title}\n测试结果：{status}\n\n预期结果：\n{result['expected']}\n\n实际结果：\n{tests}\n{result['summary']}\n\n实际数据：\n{result['evidence']}\n\n结论：\n{result['conclusion']}\n")
+        set_text(self.acceptance_result, text)
+        self.tabs.select(self.acceptance_tab)
+        self.status.set(f"{case.title}测试{status} · 已显示真实数据")
 
     def build_help(self):
         help_text = text_box(self.help_tab)
