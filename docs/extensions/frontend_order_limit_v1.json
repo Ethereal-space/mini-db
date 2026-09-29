@@ -1,0 +1,157 @@
+{
+  "feature": "order_limit",
+  "version": 1,
+  "scope": "frontend_only",
+  "source": "MiniDB四人实施手册公共v1及A-E01/A-E02/A-E03任务卡",
+  "payload_fields": [
+    "query",
+    "order_by",
+    "limit"
+  ],
+  "node_format": {
+    "kind": "string",
+    "fields": "object",
+    "span": "start/end each contain offset,line,column"
+  },
+  "valid_examples": [
+    {
+      "sql": "SELECT id FROM t ORDER BY age DESC,id LIMIT 2;",
+      "expected": {
+        "kind": "ExtensionStatement",
+        "fields": {
+          "feature": "order_limit",
+          "version": 1,
+          "payload": {
+            "query": {
+              "kind": "SelectStmt",
+              "fields": {
+                "table": {
+                  "kind": "Identifier",
+                  "fields": {
+                    "name": "t"
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 15,
+                      "line": 1,
+                      "column": 16
+                    },
+                    "end": {
+                      "offset": 16,
+                      "line": 1,
+                      "column": 17
+                    }
+                  }
+                },
+                "columns": [
+                  {
+                    "kind": "Identifier",
+                    "fields": {
+                      "name": "id"
+                    },
+                    "span": {
+                      "start": {
+                        "offset": 7,
+                        "line": 1,
+                        "column": 8
+                      },
+                      "end": {
+                        "offset": 9,
+                        "line": 1,
+                        "column": 10
+                      }
+                    }
+                  }
+                ],
+                "where": null
+              },
+              "span": {
+                "start": {
+                  "offset": 0,
+                  "line": 1,
+                  "column": 1
+                },
+                "end": {
+                  "offset": 16,
+                  "line": 1,
+                  "column": 17
+                }
+              }
+            },
+            "order_by": [
+              {
+                "column": {
+                  "kind": "Identifier",
+                  "fields": {
+                    "name": "age"
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 26,
+                      "line": 1,
+                      "column": 27
+                    },
+                    "end": {
+                      "offset": 29,
+                      "line": 1,
+                      "column": 30
+                    }
+                  }
+                },
+                "direction": "DESC"
+              },
+              {
+                "column": {
+                  "kind": "Identifier",
+                  "fields": {
+                    "name": "id"
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 35,
+                      "line": 1,
+                      "column": 36
+                    },
+                    "end": {
+                      "offset": 37,
+                      "line": 1,
+                      "column": 38
+                    }
+                  }
+                },
+                "direction": "ASC"
+              }
+            ],
+            "limit": 2
+          }
+        },
+        "span": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 45,
+            "line": 1,
+            "column": 46
+          }
+        }
+      }
+    }
+  ],
+  "invalid_examples": [
+    {
+      "sql": "SELECT * FROM t LIMIT -1;",
+      "unexpected": "-"
+    },
+    {
+      "sql": "SELECT id FROM t LIMIT 2 ORDER BY id;",
+      "unexpected": "ORDER"
+    }
+  ],
+  "execution_dependencies": [
+    "B-E05",
+    "D-E03"
+  ]
+}

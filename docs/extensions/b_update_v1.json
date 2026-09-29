@@ -1,0 +1,17 @@
+{
+  "feature": "update",
+  "version": 1,
+  "payload_fields": {
+    "table": "normalized table name",
+    "assignments": "ordered array of {index, expr}; index is the old-row schema index",
+    "where": "BOOL expression JSON or null",
+    "child": "SeqScan or Filter over SeqScan; never Project"
+  },
+  "assignment_semantics": "all right-hand expressions are evaluated against the same old row",
+  "safety": {
+    "duplicate_targets": "rejected before dictionary-like materialization",
+    "storage_side_effects": "none during binding/planning",
+    "rid": "preserved by child path"
+  },
+  "integration": "A-E01, D-E02 and C-E07 must agree on this version before full UPDATE execution"
+}

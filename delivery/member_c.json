@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "member": "C",
+  "module": "storage",
+  "completed_tasks": [
+    "C-B01",
+    "C-B02",
+    "C-B03",
+    "C-B04",
+    "C-B05",
+    "C-B06",
+    "C-E01",
+    "C-E02",
+    "C-E03",
+    "C-E04",
+    "C-E05"
+  ],
+  "verified_tasks": [
+    "C-B01",
+    "C-B02",
+    "C-B03",
+    "C-B04",
+    "C-B05",
+    "C-B06",
+    "C-E01",
+    "C-E02",
+    "C-E03",
+    "C-E04",
+    "C-E05"
+  ],
+  "modified_files": [
+    "minidb/storage/constants.py",
+    "minidb/storage/superblock.py",
+    "minidb/storage/disk_manager.py",
+    "minidb/storage/page.py",
+    "minidb/storage/row_codec.py",
+    "minidb/storage/replacer.py",
+    "minidb/storage/buffer_pool.py",
+    "minidb/storage/table_heap.py",
+    "minidb/storage/catalog_repository.py",
+    "tests/storage/test_c_b01.py",
+    "tests/storage/test_c_b02.py",
+    "tests/storage/test_c_b03.py",
+    "tests/storage/test_c_b04.py",
+    "tests/storage/test_c_b05.py",
+    "tests/storage/test_c_b06.py",
+    "docs/walkthrough/member_c.md",
+    "delivery/member_c.json",
+    "tests/storage/test_c_e01.py",
+    "tests/storage/test_c_e02.py",
+    "minidb/storage/free_space_map.py",
+    "tests/storage/test_c_e03.py",
+    "tests/storage/test_c_e05.py",
+    "minidb/storage/checksum.py",
+    "docs/extensions/page_checksum_v2.json",
+    "tests/storage/test_c_e04.py"
+  ],
+  "test_results": [
+    {
+      "task": "C-B01",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b01.py"
+      ],
+      "evidence": [
+        "5 passed"
+      ]
+    },
+    {
+      "task": "C-B02",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b02.py"
+      ],
+      "evidence": [
+        "7 passed",
+        "LIFO free-list reuse, restart recovery, strict FREE bytes and cache coordination verified"
+      ]
+    },
+    {
+      "task": "C-B03",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b03.py"
+      ],
+      "evidence": [
+        "6 passed",
+        "exact-fit, two-sided growth, tombstone RID stability, round-trip and corruption checks verified"
+      ]
+    },
+    {
+      "task": "C-B04",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b04.py"
+      ],
+      "evidence": [
+        "6 passed",
+        "INT32, UTF-8 byte limits, strict decode and pre-allocation row-size checks verified"
+      ]
+    },
+    {
+      "task": "C-B05",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b05.py"
+      ],
+      "evidence": [
+        "5 passed",
+        "LRU/FIFO, pin cleanup, dirty writeback, failed write preservation and invalidation verified"
+      ]
+    },
+    {
+      "task": "C-B06",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_b06.py"
+      ],
+      "evidence": [
+        "6 passed",
+        "44-page table scan, delete/restart, page Catalog, early-stop unpin, RID/schema corruption and oversize guard verified"
+      ]
+    },
+    {
+      "task": "C-B01..C-B06",
+      "status": "PASS",
+      "commands": [
+        "python --version",
+        "python -m pip --version",
+        "python -m pytest --version",
+        "python -m compileall -q minidb",
+        "python -m pytest -q tests/contracts tests/storage",
+        "python -m pytest -q",
+        "python tools/generate_contract_hash.py --check",
+        "python tools/check_import_boundaries.py",
+        "python tools/check_task_catalog.py",
+        "python tools/check_utf8.py"
+      ],
+      "evidence": [
+        "Python 3.14.2",
+        "pip 25.3",
+        "pytest 9.1.1",
+        "compileall exit 0",
+        "tests/contracts tests/storage: 55 passed",
+        "full suite: 64 passed",
+        "contract hash, import boundaries, task catalog and UTF-8 checks passed"
+      ]
+    },
+    {
+      "task": "C-E01",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_e01.py"
+      ],
+      "evidence": [
+        "4 passed",
+        "first-fit deleted payload reuse, new Slot RID and failure atomicity verified"
+      ]
+    },
+    {
+      "task": "C-E02",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_e02.py"
+      ],
+      "evidence": [
+        "4 passed",
+        "temporary-page compaction, stable RID, zero tombstone length and idempotence verified"
+      ]
+    },
+    {
+      "task": "C-E03",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_e03.py"
+      ],
+      "evidence": [
+        "4 passed",
+        "candidate ordering, stale estimate fallback, rebuild and tombstone capacity invariants verified"
+      ]
+    },
+    {
+      "task": "C-E04",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_e04.py"
+      ],
+      "evidence": [
+        "5 passed",
+        "explicit v2 CRC32, 4092 payload boundary, bit-flip detection and v1 gate verified"
+      ]
+    },
+    {
+      "task": "C-E05",
+      "status": "PASS",
+      "commands": [
+        "python -m pytest -q tests/storage/test_c_e05.py"
+      ],
+      "evidence": [
+        "4 passed",
+        "second chance, pinned skip, bounded scan and dirty writeback verified"
+      ]
+    },
+    {
+      "task": "C-E01..C-E05",
+      "status": "PASS",
+      "commands": [
+        "python --version",
+        "python -m pip --version",
+        "python -m pytest --version",
+        "python -m compileall -q minidb tests",
+        "python -m pytest -q tests/contracts tests/storage",
+        "python -m pytest -q",
+        "python tools/generate_contract_hash.py --check",
+        "python tools/check_import_boundaries.py",
+        "python tools/check_task_catalog.py",
+        "python tools/check_utf8.py"
+      ],
+      "evidence": [
+        "CPython 3.14.2",
+        "pip 25.3",
+        "pytest 9.1.1",
+        "compileall exit 0",
+        "tests/contracts tests/storage: 76 passed",
+        "full suite: 85 passed",
+        "contract hash, import boundaries, task catalog and UTF-8 checks passed"
+      ]
+    }
+  ],
+  "contract_hash": "e086cafec0a281ca94d3141731d4b227369879ad3345cbae2653cf76f8f1aa3b",
+  "walkthrough": "docs/walkthrough/member_c.md",
+  "preparation": {
+    "status": "ready",
+    "venv": ".venv",
+    "python": "3.14.2",
+    "pip": "25.3",
+    "pytest": "9.1.1",
+    "dependencies": "requirements-dev.txt",
+    "editable_package": "minidb-course==0.1.0",
+    "checks": [
+      "python -m compileall -q minidb tools tests",
+      "tools/generate_contract_hash.py --check",
+      "tools/check_import_boundaries.py",
+      "tools/check_task_catalog.py",
+      "python -m pytest -q"
+    ],
+    "result": "PASS: CPython 3.14.2, pip 25.3, pytest 9.1.1 and full storage/core checks",
+    "tasks_completed": true
+  }
+}

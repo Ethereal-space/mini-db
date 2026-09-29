@@ -1,0 +1,116 @@
+{
+  "feature": "update",
+  "version": 1,
+  "scope": "frontend_only",
+  "source": "MiniDB四人实施手册公共v1及A-E01/A-E02/A-E03任务卡",
+  "payload_fields": [
+    "table",
+    "assignments",
+    "where"
+  ],
+  "node_format": {
+    "kind": "string",
+    "fields": "object",
+    "span": "start/end each contain offset,line,column"
+  },
+  "valid_examples": [
+    {
+      "sql": "UPDATE t SET id=2;",
+      "expected": {
+        "kind": "ExtensionStatement",
+        "fields": {
+          "feature": "update",
+          "version": 1,
+          "payload": {
+            "table": {
+              "kind": "Identifier",
+              "fields": {
+                "name": "t"
+              },
+              "span": {
+                "start": {
+                  "offset": 7,
+                  "line": 1,
+                  "column": 8
+                },
+                "end": {
+                  "offset": 8,
+                  "line": 1,
+                  "column": 9
+                }
+              }
+            },
+            "assignments": [
+              {
+                "column": {
+                  "kind": "Identifier",
+                  "fields": {
+                    "name": "id"
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 13,
+                      "line": 1,
+                      "column": 14
+                    },
+                    "end": {
+                      "offset": 15,
+                      "line": 1,
+                      "column": 16
+                    }
+                  }
+                },
+                "expr": {
+                  "kind": "Literal",
+                  "fields": {
+                    "value": 2
+                  },
+                  "span": {
+                    "start": {
+                      "offset": 16,
+                      "line": 1,
+                      "column": 17
+                    },
+                    "end": {
+                      "offset": 17,
+                      "line": 1,
+                      "column": 18
+                    }
+                  }
+                }
+              }
+            ],
+            "where": null
+          }
+        },
+        "span": {
+          "start": {
+            "offset": 0,
+            "line": 1,
+            "column": 1
+          },
+          "end": {
+            "offset": 17,
+            "line": 1,
+            "column": 18
+          }
+        }
+      }
+    }
+  ],
+  "invalid_examples": [
+    {
+      "sql": "UPDATE t SET id=;",
+      "unexpected": ";"
+    },
+    {
+      "sql": "UPDATE t id=2;",
+      "unexpected": "id"
+    }
+  ],
+  "execution_dependencies": [
+    "B-E04",
+    "C-E07",
+    "D-E02"
+  ]
+}

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# MiniDB runtime files
+*.db
+*.db-journal
+
+# Local four-copy integration workspace and generated result
+_integration_input/
+_integration_output/
+
+# Document rendering scratch files
+docs/manual/rendered/
+docs/manual/*.pdf

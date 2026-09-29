@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "member": "D",
+  "module": "runtime",
+  "completed_tasks": [
+    "D-B01",
+    "D-B02",
+    "D-B03",
+    "D-B04",
+    "D-B05",
+    "D-B06"
+  ],
+  "verified_tasks": [
+    "D-B01",
+    "D-B02",
+    "D-B03",
+    "D-B04",
+    "D-B05",
+    "D-B06"
+  ],
+  "modified_files": [
+    "minidb/runtime/expression_evaluator.py",
+    "minidb/runtime/operators.py",
+    "minidb/runtime/command_executors.py",
+    "minidb/runtime/execution_service.py",
+    "minidb/runtime/result_formatter.py",
+    "minidb/runtime/cli_service.py",
+    "tests/runtime/test_d_b01.py",
+    "tests/runtime/test_d_b02.py",
+    "tests/runtime/test_d_b03.py",
+    "tests/runtime/test_d_b04.py",
+    "tests/runtime/test_d_b05.py",
+    "tests/runtime/test_d_b06.py",
+    "docs/walkthrough/member_d.md",
+    "delivery/member_d.json"
+  ],
+  "test_results": [
+    {
+      "tasks": [
+        "D-B01"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b01.py",
+      "status": "passed",
+      "result": "13 passed"
+    },
+    {
+      "tasks": [
+        "D-B02"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b02.py",
+      "status": "passed",
+      "result": "6 passed"
+    },
+    {
+      "tasks": [
+        "D-B03"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b03.py",
+      "status": "passed",
+      "result": "6 passed"
+    },
+    {
+      "tasks": [
+        "D-B04"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b04.py",
+      "status": "passed",
+      "result": "6 passed"
+    },
+    {
+      "tasks": [
+        "D-B05"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b05.py",
+      "status": "passed",
+      "result": "6 passed"
+    },
+    {
+      "tasks": [
+        "D-B06"
+      ],
+      "command": "python -m pytest -q tests/runtime/test_d_b06.py",
+      "status": "passed",
+      "result": "9 passed"
+    },
+    {
+      "tasks": [
+        "D-B01",
+        "D-B02",
+        "D-B03",
+        "D-B04",
+        "D-B05",
+        "D-B06"
+      ],
+      "command": "python -m pytest -q tests/contracts tests/runtime",
+      "status": "passed",
+      "result": "66 passed"
+    },
+    {
+      "tasks": [
+        "D-B01",
+        "D-B02",
+        "D-B03",
+        "D-B04",
+        "D-B05",
+        "D-B06"
+      ],
+      "command": "python -m pytest -q",
+      "status": "passed",
+      "result": "355 passed"
+    }
+  ],
+  "contract_hash": "e086cafec0a281ca94d3141731d4b227369879ad3345cbae2653cf76f8f1aa3b",
+  "walkthrough": "docs/walkthrough/member_d.md"
+}

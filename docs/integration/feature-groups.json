@@ -1,0 +1,442 @@
+{
+  "schema_version": 1,
+  "selection_policy": {
+    "declared_tasks_are_allowlist": true,
+    "undeclared_extensions": "ignore",
+    "base_tasks_required": 24,
+    "contract_hash_mismatch": "reject_member_input",
+    "group_test_failure": "rollback_only_that_group",
+    "partial_group": "skip_group_keep_core",
+    "git_operations": "forbidden"
+  },
+  "groups": [
+    {
+      "id": "update",
+      "name": "UPDATE",
+      "category": "full_execution_chain",
+      "mode": "atomic",
+      "required_tasks": [
+        "A-E01",
+        "B-E04",
+        "C-E07",
+        "D-E02"
+      ],
+      "activation": "用户明确声明全部任务、实现与测试证据存在、契约哈希一致且组测试通过时启用",
+      "on_incomplete": "跳过整组并报告缺少的准确任务编号；核心继续整合",
+      "register_executable": true,
+      "notes": "任一任务缺失或失败都不注册该 SQL 能力。"
+    },
+    {
+      "id": "order_limit",
+      "name": "ORDER BY / LIMIT",
+      "category": "full_execution_chain",
+      "mode": "atomic",
+      "required_tasks": [
+        "A-E02",
+        "B-E05",
+        "D-E03"
+      ],
+      "activation": "用户明确声明全部任务、实现与测试证据存在、契约哈希一致且组测试通过时启用",
+      "on_incomplete": "跳过整组并报告缺少的准确任务编号；核心继续整合",
+      "register_executable": true,
+      "notes": "任一任务缺失或失败都不注册该 SQL 能力。"
+    },
+    {
+      "id": "join",
+      "name": "JOIN",
+      "category": "full_execution_chain",
+      "mode": "atomic",
+      "required_tasks": [
+        "A-E04",
+        "B-E06",
+        "D-E05"
+      ],
+      "activation": "用户明确声明全部任务、实现与测试证据存在、契约哈希一致且组测试通过时启用",
+      "on_incomplete": "跳过整组并报告缺少的准确任务编号；核心继续整合",
+      "register_executable": true,
+      "notes": "任一任务缺失或失败都不注册该 SQL 能力。"
+    },
+    {
+      "id": "aggregate",
+      "name": "GROUP BY / 聚合",
+      "category": "full_execution_chain",
+      "mode": "atomic",
+      "required_tasks": [
+        "A-E05",
+        "B-E07",
+        "D-E04"
+      ],
+      "activation": "用户明确声明全部任务、实现与测试证据存在、契约哈希一致且组测试通过时启用",
+      "on_incomplete": "跳过整组并报告缺少的准确任务编号；核心继续整合",
+      "register_executable": true,
+      "notes": "任一任务缺失或失败都不注册该 SQL 能力。"
+    },
+    {
+      "id": "explain",
+      "name": "EXPLAIN",
+      "category": "full_execution_chain",
+      "mode": "atomic",
+      "required_tasks": [
+        "B-E09",
+        "D-E01"
+      ],
+      "activation": "用户明确声明全部任务、实现与测试证据存在、契约哈希一致且组测试通过时启用",
+      "on_incomplete": "跳过整组并报告缺少的准确任务编号；核心继续整合",
+      "register_executable": true,
+      "notes": "任一任务缺失或失败都不注册该 SQL 能力。"
+    },
+    {
+      "id": "independent_a_e08",
+      "name": "独立低耦合扩展 A-E08",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "A-E08"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_a_e09",
+      "name": "独立低耦合扩展 A-E09",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "A-E09"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_a_e10",
+      "name": "独立低耦合扩展 A-E10",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "A-E10"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_b_e01",
+      "name": "独立低耦合扩展 B-E01",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "B-E01"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_b_e02",
+      "name": "独立低耦合扩展 B-E02",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "B-E02"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_b_e10",
+      "name": "独立低耦合扩展 B-E10",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "B-E10"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_b_e11",
+      "name": "独立低耦合扩展 B-E11",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "B-E11"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_c_e01",
+      "name": "独立低耦合扩展 C-E01",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "C-E01"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_c_e05",
+      "name": "独立低耦合扩展 C-E05",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "C-E05"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_c_e06",
+      "name": "独立低耦合扩展 C-E06",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "C-E06"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_c_e11",
+      "name": "独立低耦合扩展 C-E11",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "C-E11"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_d_e06",
+      "name": "独立低耦合扩展 D-E06",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "D-E06"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_d_e08",
+      "name": "独立低耦合扩展 D-E08",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "D-E08"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_d_e09",
+      "name": "独立低耦合扩展 D-E09",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "D-E09"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_d_e10",
+      "name": "独立低耦合扩展 D-E10",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "D-E10"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "independent_d_e11",
+      "name": "独立低耦合扩展 D-E11",
+      "category": "independent_low_coupling",
+      "mode": "per_task",
+      "required_tasks": [
+        "D-E11"
+      ],
+      "activation": "任务被用户声明、契约不变、自身测试通过即可单独整合",
+      "on_incomplete": "只跳过该任务，不影响核心或其他独立任务",
+      "register_executable": false,
+      "notes": "按任务卡暴露工具、内部策略或非 SQL 入口；不得擅自新增核心 SQL。"
+    },
+    {
+      "id": "distinct",
+      "name": "DISTINCT",
+      "category": "incomplete_execution_chain",
+      "mode": "retain_only",
+      "required_tasks": [
+        "A-E03"
+      ],
+      "activation": "可保留用户声明且测试通过的代码与证据",
+      "on_incomplete": "保留已完成模块，但不注册为可执行 SQL 功能",
+      "register_executable": false,
+      "notes": "现有任务集合缺少完整前端、编译、存储或执行链。"
+    },
+    {
+      "id": "extended_types",
+      "name": "FLOAT / NULL / BOOL",
+      "category": "incomplete_execution_chain",
+      "mode": "retain_only",
+      "required_tasks": [
+        "A-E06",
+        "B-E08"
+      ],
+      "activation": "可保留用户声明且测试通过的代码与证据",
+      "on_incomplete": "保留已完成模块，但不注册为可执行 SQL 功能",
+      "register_executable": false,
+      "notes": "现有任务集合缺少完整前端、编译、存储或执行链。"
+    },
+    {
+      "id": "arithmetic",
+      "name": "算术表达式",
+      "category": "incomplete_execution_chain",
+      "mode": "retain_only",
+      "required_tasks": [
+        "A-E07",
+        "B-E03"
+      ],
+      "activation": "可保留用户声明且测试通过的代码与证据",
+      "on_incomplete": "保留已完成模块，但不注册为可执行 SQL 功能",
+      "register_executable": false,
+      "notes": "现有任务集合缺少完整前端、编译、存储或执行链。"
+    },
+    {
+      "id": "experimental_c_e02",
+      "name": "实验性扩展 C-E02",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E02"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e03",
+      "name": "实验性扩展 C-E03",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E03"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e04",
+      "name": "实验性扩展 C-E04",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E04"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e08",
+      "name": "实验性扩展 C-E08",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E08"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e09",
+      "name": "实验性扩展 C-E09",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E09"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e10",
+      "name": "实验性扩展 C-E10",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E10"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_c_e12",
+      "name": "实验性扩展 C-E12",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "C-E12"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    },
+    {
+      "id": "experimental_d_e07",
+      "name": "实验性扩展 D-E07",
+      "category": "storage_format_or_system_experiment",
+      "mode": "experimental",
+      "required_tasks": [
+        "D-E07"
+      ],
+      "activation": "用户明确声明、独立实验输入完整且测试通过时只生成实验结果说明",
+      "on_incomplete": "跳过实验，不影响核心结果",
+      "register_executable": false,
+      "notes": "默认不进入核心 mini.db 格式或正式结果；使用隔离数据库/格式版本。"
+    }
+  ]
+}

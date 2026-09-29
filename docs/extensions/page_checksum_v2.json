@@ -1,0 +1,12 @@
+{
+  "feature": "page_checksum",
+  "version": 2,
+  "algorithm": "CRC32",
+  "page_size": 4096,
+  "checksum_offset": 4092,
+  "checksum_size": 4,
+  "payload_end": 4092,
+  "byte_order": "little-endian",
+  "version_gate": "v2 must be explicitly opened; v1 is never silently upgraded",
+  "scope": "experimental storage format; core v1 files remain unchanged"
+}

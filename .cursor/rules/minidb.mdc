@@ -1,0 +1,10 @@
+---
+description: MiniDB 任务路由、模块边界与验收规则
+alwaysApply: true
+---
+
+统一入口是 `docs/ai/AI_START_HERE.md`，并遵守 `AGENTS.md`。遇到“我是成员 X，执行/进行/完成任务 X-Bnn/X-Enn”，使用 `docs/tasks/catalog.json` 定位任务卡，完整执行 `AI_TASK_BEGIN` 到 `AI_TASK_END`。
+
+只修改任务卡允许路径。`minidb/contracts/`、`contracts.sha256`、其他成员模块与 `minidb/integration/` 对普通成员只读。模块只依赖 `minidb.contracts` 和 Python 标准库。禁止 sqlite3、SQLAlchemy、Lark、PLY、占位实现、dummy row、假成功与测试专用分支。
+
+先写或补强能失败的行为测试；覆盖正常、边界、错误与资源状态。实现后运行任务卡命令并更新真实 walkthrough 与 delivery JSON。环境目标：Python 3.14.2、pip 25.3、pytest 9.1.1、UTF-8。不执行 Git 提交或推送。

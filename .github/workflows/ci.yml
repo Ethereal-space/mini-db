@@ -1,0 +1,41 @@
+name: baseline
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.2"
+          cache: pip
+      - name: Install pinned tools
+        run: |
+          python -m pip install --upgrade pip==25.3
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+      - name: Compile package
+        run: python -m compileall -q minidb tools tests
+      - name: Check frozen contract hash
+        run: python tools/generate_contract_hash.py --check
+      - name: Check UTF-8 files
+        run: python tools/check_utf8.py
+      - name: Check module boundaries
+        run: python tools/check_import_boundaries.py
+      - name: Check task catalog
+        run: python tools/check_task_catalog.py
+      - name: Run tests
+        run: python -m pytest
